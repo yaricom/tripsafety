@@ -1,0 +1,245 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		78A8CD9C1A7A5BD1000FACD3 /* TestRunner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */; };
+		78A8CD9F1A7A5C74000FACD3 /* TripSafetyFactors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		78A8CD8F1A7A5B7F000FACD3 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		78A8CD911A7A5B7F000FACD3 /* TripSafety */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = TripSafety; sourceTree = BUILT_PRODUCTS_DIR; };
+		78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestRunner.cpp; sourceTree = "<group>"; };
+		78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stdc++.h"; sourceTree = "<group>"; };
+		78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TripSafetyFactors.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		78A8CD8E1A7A5B7F000FACD3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		78A8CD881A7A5B7F000FACD3 = {
+			isa = PBXGroup;
+			children = (
+				78A8CD931A7A5B7F000FACD3 /* TripSafety */,
+				78A8CD921A7A5B7F000FACD3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		78A8CD921A7A5B7F000FACD3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				78A8CD911A7A5B7F000FACD3 /* TripSafety */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		78A8CD931A7A5B7F000FACD3 /* TripSafety */ = {
+			isa = PBXGroup;
+			children = (
+				78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */,
+				78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */,
+				78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */,
+			);
+			path = TripSafety;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		78A8CD901A7A5B7F000FACD3 /* TripSafety */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 78A8CD981A7A5B7F000FACD3 /* Build configuration list for PBXNativeTarget "TripSafety" */;
+			buildPhases = (
+				78A8CD8D1A7A5B7F000FACD3 /* Sources */,
+				78A8CD8E1A7A5B7F000FACD3 /* Frameworks */,
+				78A8CD8F1A7A5B7F000FACD3 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TripSafety;
+			productName = TripSafety;
+			productReference = 78A8CD911A7A5B7F000FACD3 /* TripSafety */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		78A8CD891A7A5B7F000FACD3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0610;
+				ORGANIZATIONNAME = Danfoss;
+				TargetAttributes = {
+					78A8CD901A7A5B7F000FACD3 = {
+						CreatedOnToolsVersion = 6.1.1;
+					};
+				};
+			};
+			buildConfigurationList = 78A8CD8C1A7A5B7F000FACD3 /* Build configuration list for PBXProject "TripSafety" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 78A8CD881A7A5B7F000FACD3;
+			productRefGroup = 78A8CD921A7A5B7F000FACD3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				78A8CD901A7A5B7F000FACD3 /* TripSafety */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		78A8CD8D1A7A5B7F000FACD3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				78A8CD9C1A7A5BD1000FACD3 /* TestRunner.cpp in Sources */,
+				78A8CD9F1A7A5C74000FACD3 /* TripSafetyFactors.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		78A8CD961A7A5B7F000FACD3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		78A8CD971A7A5B7F000FACD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		78A8CD991A7A5B7F000FACD3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		78A8CD9A1A7A5B7F000FACD3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		78A8CD8C1A7A5B7F000FACD3 /* Build configuration list for PBXProject "TripSafety" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				78A8CD961A7A5B7F000FACD3 /* Debug */,
+				78A8CD971A7A5B7F000FACD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		78A8CD981A7A5B7F000FACD3 /* Build configuration list for PBXNativeTarget "TripSafety" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				78A8CD991A7A5B7F000FACD3 /* Debug */,
+				78A8CD9A1A7A5B7F000FACD3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 78A8CD891A7A5B7F000FACD3 /* Project object */;
+}
