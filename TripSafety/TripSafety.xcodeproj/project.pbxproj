@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		788E3DA31A7B8E1B009CA485 /* WeightedKNN.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 788E3DA11A7B8E1B009CA485 /* WeightedKNN.cpp */; };
 		78A8CD9C1A7A5BD1000FACD3 /* TestRunner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */; };
-		78A8CD9F1A7A5C74000FACD3 /* TripSafetyFactors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,10 +24,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		788E3D9E1A7B8E1B009CA485 /* features_normalization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = features_normalization.h; sourceTree = "<group>"; };
+		788E3D9F1A7B8E1B009CA485 /* gradient_boosting_tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gradient_boosting_tree.h; sourceTree = "<group>"; };
+		788E3DA01A7B8E1B009CA485 /* io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = io.h; sourceTree = "<group>"; };
+		788E3DA11A7B8E1B009CA485 /* WeightedKNN.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WeightedKNN.cpp; sourceTree = "<group>"; };
+		788E3DA21A7B8E1B009CA485 /* WeightedKNN.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeightedKNN.h; sourceTree = "<group>"; };
+		788E3DA41A7B8E59009CA485 /* TripSafetyFactors.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TripSafetyFactors.h; sourceTree = "<group>"; };
 		78A8CD911A7A5B7F000FACD3 /* TripSafety */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = TripSafety; sourceTree = BUILT_PRODUCTS_DIR; };
 		78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestRunner.cpp; sourceTree = "<group>"; };
 		78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stdc++.h"; sourceTree = "<group>"; };
-		78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TripSafetyFactors.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,9 +65,14 @@
 		78A8CD931A7A5B7F000FACD3 /* TripSafety */ = {
 			isa = PBXGroup;
 			children = (
+				788E3D9E1A7B8E1B009CA485 /* features_normalization.h */,
+				788E3D9F1A7B8E1B009CA485 /* gradient_boosting_tree.h */,
+				788E3DA01A7B8E1B009CA485 /* io.h */,
+				788E3DA11A7B8E1B009CA485 /* WeightedKNN.cpp */,
+				788E3DA21A7B8E1B009CA485 /* WeightedKNN.h */,
 				78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */,
 				78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */,
-				78A8CD9E1A7A5C74000FACD3 /* TripSafetyFactors.cpp */,
+				788E3DA41A7B8E59009CA485 /* TripSafetyFactors.h */,
 			);
 			path = TripSafety;
 			sourceTree = "<group>";
@@ -123,8 +133,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				788E3DA31A7B8E1B009CA485 /* WeightedKNN.cpp in Sources */,
 				78A8CD9C1A7A5BD1000FACD3 /* TestRunner.cpp in Sources */,
-				78A8CD9F1A7A5C74000FACD3 /* TripSafetyFactors.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,6 +248,7 @@
 				78A8CD9A1A7A5B7F000FACD3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
