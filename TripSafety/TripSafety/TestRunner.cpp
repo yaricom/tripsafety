@@ -10,7 +10,7 @@
 #define FROM_TEST_RUNNER
 
 #include "stdc++.h"
-#include "TripSafetyFactors.cpp"
+#include "TripSafetyFactors.h"
 
 namespace am {
     namespace launcher {
