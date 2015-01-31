@@ -186,15 +186,15 @@ namespace am {
                 
                 // parse data and create ground truth
                 for (row = 0; row < numTrainingData; row++) {
-                    VS items = splt(line, ',');
+                    VS items = splt(dataLines[row], ',');
                     size_t items_size = items.size();
                     
                     if (row < X) {
                         // collect training data
-                        DTrain.push_back(line);
+                        DTrain.push_back(dataLines[row]);
                     } else {
                         // collect test data
-                        DTest.push_back(line);
+                        DTest.push_back(dataLines[row]);
                         
                         // collect ground truth
                         int event = std::stoi(items[items_size - 1]);
