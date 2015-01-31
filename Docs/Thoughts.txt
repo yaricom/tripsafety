@@ -31,3 +31,37 @@
 
 Трафик показатели - отношение общего кол-ва сегментов к сумме congested trip segments traf0-4
 
+source * 10
+dist * 10
+cycles
+complexity * 10
+cargo
+stops
+start_day * 10
+start_month
+start_day_of_month * 10
+start_day_of_week
+
+start_time * 10
+
+days * 10
+
+pilot * 100
+pilot2 * 10
+
+pilot_exp * 10
+pilot_visits_prev
+
+pilot_hours_prev * 10
+pilot_duty_hrs_prev * 10
+pilot_dist_prev * 10
+
+route_risk_1
+route_risk_2
+weather
+visibility * 10
+
+congestion * 10
+
+
+

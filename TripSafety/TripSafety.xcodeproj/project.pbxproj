@@ -33,6 +33,8 @@
 		78A8CD911A7A5B7F000FACD3 /* TripSafety */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = TripSafety; sourceTree = BUILT_PRODUCTS_DIR; };
 		78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestRunner.cpp; sourceTree = "<group>"; };
 		78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "stdc++.h"; sourceTree = "<group>"; };
+		78E7BEBB1A7D1ED200208978 /* estimators.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = estimators.h; sourceTree = "<group>"; };
+		78E7BEBC1A7D21E300208978 /* statistics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = statistics.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,6 +75,8 @@
 				78A8CD9D1A7A5BF8000FACD3 /* stdc++.h */,
 				78A8CD9B1A7A5BD1000FACD3 /* TestRunner.cpp */,
 				788E3DA41A7B8E59009CA485 /* TripSafetyFactors.h */,
+				78E7BEBC1A7D21E300208978 /* statistics.h */,
+				78E7BEBB1A7D1ED200208978 /* estimators.h */,
 			);
 			path = TripSafety;
 			sourceTree = "<group>";
