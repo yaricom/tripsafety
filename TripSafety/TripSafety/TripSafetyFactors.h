@@ -12,7 +12,8 @@
 
 #define LOCAL true
 
-#define USE_REGERESSION
+#define USE_ESTIMATORS
+//#define USE_REGERESSION
 //#define USE_XGBOOST
 //#define USE_RANDOM_FOREST
 //#define USE_KNN_CLASSIFICATION
@@ -1432,6 +1433,8 @@ Estimator *visibilityEstimator = new KernelEstimator(.1);
 Estimator *pilotHoursPrevEstimator = new KernelEstimator(.2);
 Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.2);
 
+Estimator *rankEstimator = new PoissonEstimator();// new KernelEstimator(.01);
+
 #define FORE(i, a, b, c) for (int i = (a); i < (b).size(); i++) (c)->addValue(i, (b)[i]);
 
 void initFreqEstimators() {
@@ -1501,7 +1504,15 @@ inline double calcCongestionFactor(const Entry &e) {
         return 0;
 }
 
-void createEntryFeatures(const Entry &e, VD &feats) {
+double collectFeatures(VD &feats) {
+    double val = 0;
+    for (int i = 0; i < feats.size(); i++) {
+        val += feats[i];
+    }
+    return val / feats.size();
+}
+
+void createEntryFeatures(const Entry &e, const bool train, VD &feats) {
     feats.push_back(sourceEstimator->getProbability(e.source) * 100);
     feats.push_back(distanceEstimator->getProbability(extractDistanceRange(e)) * 100);
     feats.push_back(cyclesEstimator->getProbability(e.cycles) * 10);
@@ -1527,6 +1538,11 @@ void createEntryFeatures(const Entry &e, VD &feats) {
     feats.push_back(visibilityEstimator->getProbability(e.visibility) * 100);
     
     feats.push_back(congestionEstimator->getProbability(calcCongestionFactor(e)) * 100);
+    
+    if (train) {
+        double val = collectFeatures(feats);
+        rankEstimator->addValue(val, e.evt_cnt);
+    }
 }
 
 void collectTrainingData(const Entry &e) {
@@ -1904,14 +1920,14 @@ public:
         Matrix trainM(0, 24 + 1);// last is class value
         for (int i = 0; i < trainEntries.size(); i++) {
             VD row;
-            createEntryFeatures(trainEntries[i], row);
+            createEntryFeatures(trainEntries[i], true, row);
             row.push_back(trainEntries[i].evt_cnt);
             trainM.addRow(row);
         }
         Matrix testM(0, 24);
         for (const Entry &e : testEntries) {
             VD row;
-            createEntryFeatures(e, row);
+            createEntryFeatures(e, false, row);
             testM.addRow(row);
         }
         
@@ -1922,11 +1938,14 @@ public:
 //        storeMatrixAsLibSVM("/Users/yaric/train.libsvm", trainM);
         
         // do classification
+#ifdef USE_ESTIMATORS
+        rank(trainM, trainEntries, testM, testEntries);
+#endif
 #ifdef USE_KNN_CLASSIFICATION
-        rankByClassification(trainM, trainEntries, testM, testEntries);
+        rank(trainM, trainEntries, testM, testEntries);
 #endif
 #ifdef USE_REGERESSION
-        rankByRegression(trainM, trainEntries, testM, testEntries);
+        rank(trainM, trainEntries, testM, testEntries);
 #endif
         
         sort(testEntries.begin(), testEntries.end(), sortByPrediction);
@@ -1944,8 +1963,26 @@ public:
     }
     
 private:
+#ifdef USE_ESTIMATORS
+    void rank(const Matrix &trainM, const VE &trainEntries,  Matrix &testM, VE &testEntries) {
+        cerr << "=========== Rank by Estimators ===========" << endl;
+        
+        double startTime = getTime();
+        // predict
+        for (int i = 0; i < Y; i++) {
+            double val = collectFeatures(testM[i]);
+            testEntries[i].predicted = rankEstimator->getProbability(val);
+            
+            Printf("Id: %i, events: %f\n", i, testEntries[i].predicted);
+        }
+        
+        double finishTime = getTime();
+        
+        Printf("Rank time: %f\n", finishTime - startTime);
+    }
+#endif
 #ifdef USE_REGERESSION
-    void rankByRegression(const Matrix &trainM, const VE &trainEntries,  Matrix &testM, VE &testEntries) {
+    void rank(const Matrix &trainM, const VE &trainEntries,  Matrix &testM, VE &testEntries) {
         cerr << "=========== Rank by GBT regression ===========" << endl;
         
         double startTime = getTime();
@@ -1983,7 +2020,7 @@ private:
 #endif
     
 #ifdef USE_KNN_CLASSIFICATION
-    void rankByClassification(const Matrix &trainM, const VE &trainEntries, const Matrix &testM, VE &testEntries) {
+    void rank(const Matrix &trainM, const VE &trainEntries, const Matrix &testM, VE &testEntries) {
         
         cerr << "=========== Rank by classification ===========" << endl;
         
