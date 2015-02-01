@@ -46,8 +46,8 @@ start_time * 10
 
 days * 10
 
-pilot * 100
-pilot2 * 10
+pilot * 10
+pilot2
 
 pilot_exp * 10
 pilot_visits_prev

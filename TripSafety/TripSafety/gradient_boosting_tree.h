@@ -9,8 +9,6 @@
 #ifndef MLib_gradient_boosting_tree_h
 #define MLib_gradient_boosting_tree_h
 
-#include "matrix.h"
-#include "random.h"
 
 namespace nologin {
     namespace tree {
@@ -51,8 +49,8 @@ namespace nologin {
         };
         
         struct SplitRes {
-            VC<VD> m_feature_left;
-            VC<VD> m_feature_right;
+            VVD m_feature_left;
+            VVD m_feature_right;
             double m_left_value = 0.0;
             double m_right_value = 0.0;
             VD m_obs_left;
@@ -484,7 +482,7 @@ namespace nologin {
              * @param input_x the input features
              * @param input_y the ground truth values - one per features row
              */
-            PredictionForest *train(const VC<VD> &input_x, const VD &input_y) {
+            PredictionForest *train(const Matrix &input_x, const VD &input_y) {
                 
                 // initialize forest
                 PredictionForest *res_fun = new PredictionForest(m_learning_rate);
@@ -492,7 +490,7 @@ namespace nologin {
                 // get the samples number
                 size_t samples_num = input_y.size();
                 
-                Assert(samples_num == input_x.size() && samples_num > 0,
+                Assert(samples_num == input_x.rows() && samples_num > 0,
                        "Error: The input_x size should not be zero and should match the size of input_y");
                 
                 // get an initial guess of the function
@@ -538,7 +536,7 @@ namespace nologin {
                         VI sampled_index = sampler.get_sample_index();
                         
                         // data for growing trees
-                        VC<VD> train_x;
+                        VVD train_x;
                         VD train_y;
                         
                         for (int sel_index : sampled_index) {
