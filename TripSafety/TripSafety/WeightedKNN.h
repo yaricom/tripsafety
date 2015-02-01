@@ -20,9 +20,9 @@
 // The active molecules data
 //
 //xx is the total number of attributes in the data set INCLUDING the class attribute
-#define NO_OF_ATT 22
+#define NO_OF_ATT 24
 //yy is the number of classes
-#define NO_OF_CLASSES 51
+#define NO_OF_CLASSES 7
 
 //The Heart Data Set
 //#define NO_OF_ATT 14
@@ -43,7 +43,7 @@
 
 /* The number of nearest neighbors to use. */
 #define K 3
-#define LEARNING_RATE 0.005
+#define LEARNING_RATE 0.01
 
 #define uint	unsigned int
 

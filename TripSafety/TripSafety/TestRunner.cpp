@@ -98,6 +98,8 @@ namespace am {
                     }
                 }
                 bool check[Y];
+                for (int i = 0; i < Y; i++) check[i] = false;
+                    
                 for (int i = 0; i < Y; i++) {
                     if (results[i] < 1) {
                         fprintf(stderr, "Rank at index: %i, is lower than 1.", i);

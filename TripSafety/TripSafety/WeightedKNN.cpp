@@ -192,8 +192,8 @@ float BackwardElimination (TRAINING_EXAMPLES_LIST *trainList,
  */
 std::vector<int>classifyBySimpleAttributeWKNN (TRAINING_EXAMPLES_LIST *trainList,
                                                TRAINING_EXAMPLES_LIST *testList) {
-    int trainExamples = trainList->size();
-    int testExamples = testList->size();
+    size_t trainExamples = trainList->size();
+    size_t testExamples = testList->size();
     
     int no_of_iterations	= 25;
     int desiredAccuracy		= 85;
@@ -215,13 +215,13 @@ std::vector<int>classifyBySimpleAttributeWKNN (TRAINING_EXAMPLES_LIST *trainList
     
     /* Learn weights by cross validation (3 fold) on training set */
     float accuracy = CrossValidate (trainList, no_of_iterations,
-                                    trainExamples, isAttrWKNN);
+                                    (int)trainExamples, isAttrWKNN);
     
     cerr << "CrossValidate accuracy: " << accuracy << endl;
     
     /* Learn weights on the whole training set */
     no_of_iterations = 100;
-    LearnWeights (trainList, *trainList, no_of_iterations, trainExamples,
+    LearnWeights (trainList, *trainList, no_of_iterations, (int)trainExamples,
                   TRAINING, desiredAccuracy, isAttrWKNN);
     
     //
@@ -265,8 +265,8 @@ std::vector<int>classifyBySimpleAttributeWKNN (TRAINING_EXAMPLES_LIST *trainList
  */
 std::vector<int>classifyBySimpleKNN (TRAINING_EXAMPLES_LIST *trainList,
                                      TRAINING_EXAMPLES_LIST *testList) {
-    int trainExamples = trainList->size();
-    int testExamples = testList->size();
+    size_t trainExamples = trainList->size();
+    size_t testExamples = testList->size();
     
     bool isInstanceWKNN = false;
     MODE mode			= TESTING;
@@ -282,13 +282,14 @@ std::vector<int>classifyBySimpleKNN (TRAINING_EXAMPLES_LIST *trainList,
     uint index[K];
     std::vector<int>classes;
     
+    int count = 0;
     for (testIter = testList->begin(); testIter != testList->end(); ++testIter) {
         tmpTestObj = *testIter;
         /* Predict the class for the query point */
         int predictedClass = PredictByKNN(trainList, tmpTestObj.Value, isInstanceWKNN,
                                           index, mode, isBackwardElim, isAttrWKNN);
         
-        cerr << "Entry id: " << tmpTestObj.index << ", predicted class: " << predictedClass <<endl;
+        cerr << "id: " << count++ << ", predicted class: " << predictedClass <<endl;
         
         classes.push_back(predictedClass);
     }
@@ -313,8 +314,8 @@ std::vector<int>classifyBySimpleKNN (TRAINING_EXAMPLES_LIST *trainList,
  */
 std::vector<int>classifyByInstanceWKNN (TRAINING_EXAMPLES_LIST *trainList,
                                         TRAINING_EXAMPLES_LIST *testList) {
-    int trainExamples = trainList->size();
-    int testExamples = testList->size();
+    size_t trainExamples = trainList->size();
+    size_t testExamples = testList->size();
     bool isInstanceWKNN		= true;
     bool isBackwardElim		= false;
     bool isAttrWKNN			= false;
@@ -331,9 +332,9 @@ std::vector<int>classifyByInstanceWKNN (TRAINING_EXAMPLES_LIST *trainList,
     
     /* Learn weights by cross validation (3 fold) on training set */
     float accuracy = CrossValidate (trainList, no_of_iterations,
-                                    trainExamples, isAttrWKNN);
+                                    (int)trainExamples, isAttrWKNN);
     /* Learn weights on the training set */
-    LearnWeights (trainList, *trainList, no_of_iterations, trainExamples,
+    LearnWeights (trainList, *trainList, no_of_iterations, (int)trainExamples,
                   TRAINING, desiredAccuracy, isAttrWKNN);
     cerr << "Achieved cross validation accuracy: " << accuracy << endl;
     
@@ -378,8 +379,8 @@ std::vector<int>classifyByInstanceWKNN (TRAINING_EXAMPLES_LIST *trainList,
  */
 std::vector<int>classifyByKNNBackwardElimination (TRAINING_EXAMPLES_LIST *trainList,
                                                   TRAINING_EXAMPLES_LIST *testList) {
-    int trainExamples = trainList->size();
-    int testExamples = testList->size();
+    size_t trainExamples = trainList->size();
+    size_t testExamples = testList->size();
     
     float accuracy = 0.0f;
     int CCI = 0;
@@ -548,7 +549,7 @@ int TestKNN (TRAINING_EXAMPLES_LIST *tlist, TRAINING_EXAMPLES_LIST data,
 /*------------------------------------------------------------------*/
 void InitAttWeights ()
 {
-    srand (time(NULL));
+    srand ((int)time(NULL));
     for(int i = 0; i < NO_OF_ATT - 1; i++)
         attWeights[i] = ((double)(rand () % 100 + 1))/100;
 }
@@ -832,7 +833,7 @@ float CrossValidate(TRAINING_EXAMPLES_LIST *data, int iterations,
     /* First Cross Fold:  Training = N1+N2 Testing = N3 */
     /* Second Cross Fold: Training = N2+N3 Testing = N1 */
     /* Third Cross Fold:  Training = N1+N3 Testing = N2 */
-    int N = numExamples/3;
+    int N = (int)numExamples/3;
     int first = N;
     int second = 2*N;
     int i = 0;
@@ -1004,7 +1005,7 @@ bool compare(const TrainingExample t1, const TrainingExample t2)
 /* Return Parameter: 0 if end of file, line length otherwise.             */
 /* Copies a file contents to another file.                                */
 /*------------------------------------------------------------------------*/
-int GetLine (char *line, int max, FILE *fp) {
+size_t GetLine (char *line, int max, FILE *fp) {
     if(fgets(line, max, fp)==NULL)
         return 0;
     else
@@ -1038,14 +1039,14 @@ bool readData4File (char *filename, TRAINING_EXAMPLES_LIST *rlist,
     }
     
     //Initialize weights to random values
-    srand (time(NULL));
+    srand ((int)time(NULL));
     
     char *tmp;
     int tmpParams = 0; //NO_OF_ATT;
     double cd = 0.0;
     
     /* Read the data file line by line */
-    while((len = GetLine (line, lineSize, fp))!=0)
+    while((len = (int)GetLine (line, lineSize, fp))!=0)
     {
         TEObj = new TrainingExample ();
         tmp = strtok (line,",");
