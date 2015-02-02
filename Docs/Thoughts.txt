@@ -64,4 +64,6 @@ visibility * 10
 congestion * 10
 
 
+Outliers:
+2, 4, 12, 13, 14, 16, 18, 19, 20, 21, 23, 24
 

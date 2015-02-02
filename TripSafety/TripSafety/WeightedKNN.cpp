@@ -240,7 +240,7 @@ std::vector<int>classifyBySimpleAttributeWKNN (TRAINING_EXAMPLES_LIST *trainList
         int predictedClass = PredictByKNN(trainList, tmpTestObj.Value, isInstanceWKNN,
                                           index, mode, isBackwardElim, isAttrWKNN);
         
-        cerr << "Entry id: " << tmpTestObj.index << ", predicted class: " << predictedClass <<endl;
+        cerr << "id: " << tmpTestObj.index << ", predicted class: " << predictedClass <<endl;
         
         classes.push_back(predictedClass);
     }
