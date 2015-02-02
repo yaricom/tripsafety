@@ -12,14 +12,14 @@
 
 #define LOCAL true
 
+#define USE_ESTIMATORS
+//#define USE_REGERESSION
+
 #ifdef LOCAL
 #include "stdc++.h"
 #else
 #include <bits/stdc++.h>
 #endif
-
-//#define USE_ESTIMATORS
-#define USE_REGERESSION
 
 #include <iostream>
 #include <sys/time.h>
@@ -64,7 +64,11 @@ inline VS splt(string s, char c = ',') {
     return all;
 }
 
+#ifdef LOCAL
 static bool LOG_DEBUG = true;
+#else
+static bool LOG_DEBUG = false;
+#endif
 /*! the message buffer length */
 const int kPrintBuffer = 1 << 12;
 inline void Printf(const char *fmt, ...) {
@@ -235,24 +239,27 @@ double normalProbability(double a) {
     return y;
 }
 
-
 /** The small deviation allowed in double comparisons. */
 const static double SMALL = 1e-6;
 
 class Estimator {
 public:
-
-    virtual double getProbability(double data, bool inverse) const = 0;
+    virtual double getProbability(double data) const = 0;
 
     virtual void addValue(double data, double weight) = 0;
 };
 
 class PoissonEstimator : public Estimator {
+    /** The number of values seen */
     double m_NumValues;
+    /** The sum of the values seen */
     double m_SumOfValues;
+    /**
+     * The average number of times
+     * an event occurs in an interval.
+     */
     double m_Lambda;
 public:
-    
     void addValue(double data, double weight) {
         m_NumValues += weight;
         m_SumOfValues += data * weight;
@@ -260,17 +267,12 @@ public:
             m_Lambda = m_SumOfValues / m_NumValues;
         }
     }
-
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         double p = Poisson(data);
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
     
 private:
-
     double logFac(double x) const {
         double result = 0;
         for (double i = 2; i <= x; i++) {
@@ -278,18 +280,22 @@ private:
         }
         return result;
     }
-
     double Poisson(double x) const {
         return std::exp(-m_Lambda + (x * std::log(m_Lambda)) - logFac(x));
     }
 };
-
 class NormalEstimator : public Estimator {
+    /** The sum of the weights */
     double m_SumOfWeights;
+    /** The sum of the values seen */
     double m_SumOfValues;
+    /** The sum of the values squared */
     double m_SumOfValuesSq;
+    /** The current mean */
     double m_Mean;
+    /** The current standard deviation */
     double m_StandardDev;
+    /** The precision of numeric values ( = minimum std dev permitted) */
     double m_Precision;
     
 public:
@@ -298,7 +304,6 @@ public:
         // Allow at most 3 sd's within one interval
         m_StandardDev = m_Precision / (2 * 3);
     }
-    
     void addValue(double data, double weight) {
         if (weight == 0) {
             return;
@@ -320,8 +325,7 @@ public:
             }
         }
     }
-    
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         
         data = round(data);
         double zLower = (data - m_Mean - (m_Precision / 2)) / m_StandardDev;
@@ -331,10 +335,6 @@ public:
         double pUpper = normalProbability(zUpper);
         
         double p = pUpper - pLower;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
     
@@ -345,13 +345,21 @@ private:
     }
 };
 class KernelEstimator : public Estimator {
+    /** Vector containing all of the values seen */
     std::vector<double> m_Values;
+    /** Vector containing the associated weights */
     std::vector<double> m_Weights;
+    /** Number of values stored in m_Weights and m_Values so far */
     int m_NumValues;
+    /** The sum of the weights so far */
     double m_SumOfWeights;
+    /** The standard deviation */
     double m_StandardDev;
+    /** The precision of data values */
     double m_Precision;
+    /** Whether we can optimise the kernel summation */
     bool m_AllWeightsOne;
+    /** Maximum percentage error permitted in probability calculations */
     double MAX_ERROR = 0.01;
     
 public:
@@ -368,7 +376,6 @@ public:
         if (m_Precision < SMALL) m_Precision = SMALL;
         m_StandardDev = m_Precision / (2 * 3);
     }
-    
     void addValue(double data, double weight) {
         
         if (weight == 0) {
@@ -413,8 +420,7 @@ public:
                                      m_Precision / (2 * 3));
         }
     }
-    
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         
         double delta = 0, sum = 0, currentProb = 0;
         double zLower = 0, zUpper = 0;
@@ -448,10 +454,6 @@ public:
             }
         }
         double p = sum / m_SumOfWeights;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
     
@@ -479,9 +481,10 @@ private:
         return std::rint(data / m_Precision) * m_Precision;
     }
 };
-
 class DiscreteEstimator : public Estimator {
+    /** Hold the counts */
     std::vector<double> m_Counts;
+    /** Hold the sum of counts */
     double m_SumOfCounts;
     
 public:
@@ -507,15 +510,11 @@ public:
             m_SumOfCounts += weight;
         }
     }
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         if (m_SumOfCounts == 0) {
             return 0;
         }
         double p = (double)m_Counts[(int)data] / m_SumOfCounts;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
 };
@@ -1130,7 +1129,7 @@ public:
         Assert (m_min_nodes * 2 <= samples_num, "The number of samples is too small");
         
         size_t feature_dim = feature_x[0].size();
-        features_importance.resize(feature_dim, 0);
+        features_importance.resize((int)feature_dim, 0);
         
         // build the regression tree
         buildTree(feature_x, obs_y);
@@ -1781,7 +1780,15 @@ VI route_risk_1Freq;
 VI route_risk_2Freq;
 VI weatherFreq;
 
+VI traf0Freq;
+VI traf1Freq;
+VI traf2Freq;
+VI traf3Freq;
+VI traf4Freq;
+
 VI eventsFreq;
+
+VI rankFreq;
 
 inline void collectFrequency(VI &frequencies, const int index, const int value) {
     if (index >= frequencies.size()) {
@@ -1791,27 +1798,23 @@ inline void collectFrequency(VI &frequencies, const int index, const int value) 
 }
 
 inline int extractTimeRange(const Entry &e) {
-    return e.start_time_in_min / 15 + 1;
+    return e.start_time_in_min / 5 + 1;
 }
 
 inline int extractDistanceRange(const Entry &e) {
-    return e.dist / 50 + 1;
+    return e.dist;// / 5 + 1;
 }
 
 inline int extractDistancePrevRange(const Entry &e) {
-    return e.pilot_dist_prev / 50 + 1;
+    return e.pilot_dist_prev / 100 + 1;
 }
 
 inline int extractRouteRisk1(const Entry &e) {
-    return e.route_risk_1 / 14 + 1;
+    return e.route_risk_1 / 40 + 1;
 }
 
 inline int extractRouteRisk2(const Entry &e) {
-    return e.route_risk_2 / 20 + 1;
-}
-
-inline double extractPilotHoursPrev(const Entry &e) {
-    return e.pilot_hours_prev + e.pilot_duty_hrs_prev;
+    return e.route_risk_2 / 40 + 1;
 }
 
 // estimators
@@ -1837,19 +1840,23 @@ Estimator *risk1Estimator;
 Estimator *risk2Estimator;
 Estimator *weatherEstimator;
 
-Estimator *congestionEstimator = new KernelEstimator(.2);
+Estimator *traf0Estimator;
+Estimator *traf1Estimator;
+Estimator *traf2Estimator;
+Estimator *traf3Estimator;
+Estimator *traf4Estimator;
 
-Estimator *daysEstimator = new KernelEstimator(.01);
+Estimator *daysEstimator = new KernelEstimator(.1);
 Estimator *visibilityEstimator = new KernelEstimator(.1);
 Estimator *pilotHoursPrevEstimator = new KernelEstimator(.2);
-//Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.2);
+Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.2);
 
-Estimator *rankEstimator = new PoissonEstimator();// new KernelEstimator(.01);
+//Estimator *rankEstimator = new NormalEstimator(.00001);//new KernelEstimator(.001);//
 
 #define FORE(i, a, b, c) for (int i = (a); i < (b).size(); i++) (c)->addValue(i, (b)[i]);
 
 void initFreqEstimators() {
-    sourceEstimator = new KernelEstimator(1);
+    sourceEstimator = new KernelEstimator(5);
     FORE(i, 0, sourceFreq, sourceEstimator);
     
     distanceEstimator = new KernelEstimator(1);
@@ -1858,13 +1865,13 @@ void initFreqEstimators() {
     cyclesEstimator = new PoissonEstimator();//new DiscreteEstimator((int)cyclesFreq.size(), false);
     FORE(i, 1, cyclesFreq, cyclesEstimator);
     
-    complexityEstimator = new DiscreteEstimator((int)complexityFreq.size(), false);
+    complexityEstimator = new KernelEstimator(1);//new DiscreteEstimator((int)complexityFreq.size(), false);
     FORE(i, 0, complexityFreq, complexityEstimator);
     
     cargoEstimator = new PoissonEstimator();//new DiscreteEstimator((int)cargoFreq.size(), false);
     FORE(i, 1, cargoFreq, cargoEstimator);
     
-    stopsEstimator = new PoissonEstimator();//new DiscreteEstimator((int)stopsFreq.size(), false);//new PoissonEstimator();
+    stopsEstimator = new DiscreteEstimator((int)stopsFreq.size(), false);//new PoissonEstimator();
     FORE(i, 1, stopsFreq, stopsEstimator);
     
     startDayEstimator = new KernelEstimator(1);
@@ -1876,7 +1883,7 @@ void initFreqEstimators() {
     startDayOfMonthEstimator = new KernelEstimator(1);
     FORE(i, 1, start_day_of_monthFreq, startDayOfMonthEstimator);
     
-    startDayOfWeekEstimator = new DiscreteEstimator((int)start_day_of_weekFreq.size(), false);
+    startDayOfWeekEstimator = new PoissonEstimator();//new DiscreteEstimator((int)start_day_of_weekFreq.size(), false);
     FORE(i, 1, start_day_of_weekFreq, startDayOfWeekEstimator);
     
     startTimeEstimator = new KernelEstimator(1);
@@ -1905,86 +1912,83 @@ void initFreqEstimators() {
     
     weatherEstimator = new DiscreteEstimator((int)weatherFreq.size(), false);
     FORE(i, 0, weatherFreq, weatherEstimator);
+    
+    traf0Estimator = new KernelEstimator(10);
+    FORE(i, 0, traf0Freq, traf0Estimator);
+    
+    traf1Estimator = new KernelEstimator(1);
+    FORE(i, 0, traf1Freq, traf1Estimator);
+    
+    traf2Estimator = new KernelEstimator(1);
+    FORE(i, 0, traf2Freq, traf2Estimator);
+    
+    traf3Estimator = new KernelEstimator(1);
+    FORE(i, 0, traf3Freq, traf3Estimator);
+    
+    traf4Estimator = new KernelEstimator(1);
+    FORE(i, 0, traf4Freq, traf4Estimator);
 }
 
 inline double calcCongestionFactor(const Entry &e) {
     double sum = e.traf0 + e.traf1 + e.traf2 + e.traf3 + e.traf4;
     if (sum > 0)
-        return 100.0 * (e.traf1 + e.traf2 + e.traf3) / sum;
+        return (e.traf1 + e.traf2 + e.traf3) / sum;
     else
         return 0;
 }
 
+double feat_weigths[] = {100, 10000, 10, 100, 1, 10, 1, 1, 100, 10, 100, 100, 10000, 10000, 100, 1, 100, 100, 1, 1, 100, 10, 100, 100, 100, 100, 100, 100};
+
+
 double collectFeatures(VD &feats) {
     double val = 0;
     for (int i = 0; i < feats.size(); i++) {
-        val += feats[i];
+        val += feats[i] * feat_weigths[i]; // 10000;
     }
     return val / feats.size();
 }
 
+int featNum = 28;//24;
+
 void createEntryFeatures(const Entry &e, const bool train, VD &feats) {
-//    feats.push_back(sourceEstimator->getProbability(e.source, false) * 100);
-//    feats.push_back(distanceEstimator->getProbability(extractDistanceRange(e), false) * 100);
-//    feats.push_back(cyclesEstimator->getProbability(e.cycles, false) * 10);
-//    feats.push_back(complexityEstimator->getProbability(e.complexity, false) * 100);
-//    feats.push_back(cargoEstimator->getProbability(e.cargo, false) * 10);
-//    feats.push_back(stopsEstimator->getProbability(e.stops, false) * 10);
-//    feats.push_back(startDayEstimator->getProbability(e.start_day, false) * 100);
-//    feats.push_back(startMonthEstimator->getProbability(e.start_month, false) * 10);
-//    feats.push_back(startDayOfMonthEstimator->getProbability(e.start_day_of_month, false) * 100);
-//    feats.push_back(startDayOfWeekEstimator->getProbability(e.start_day_of_week, false) * 10);
-//    feats.push_back(startTimeEstimator->getProbability(extractTimeRange(e), false) * 100);
-//    feats.push_back(daysEstimator->getProbability(e.days, false) * 100);
-//    feats.push_back(pilotEstimator->getProbability(e.pilot, false) * 100); // 13
-//    feats.push_back(pilot2Estimator->getProbability(e.pilot2, false) * 100); // 14
-//    feats.push_back(pilotExpEstimator->getProbability(e.pilot_exp, true) * 100);
-//    feats.push_back(pilotVisitsPrevEstimator->getProbability(e.pilot_visits_prev, true) * 10);
-//    feats.push_back(pilotHoursPrevEstimator->getProbability(extractPilotHoursPrev(e) * 100, false));
-////    feats.push_back(pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev, false) * 100);
-//    
-//    feats.push_back(pilotDistPrevEstimator->getProbability(extractDistancePrevRange(e), false) * 100);
-//    feats.push_back(risk1Estimator->getProbability(extractRouteRisk1(e), false) * 10);
-//    feats.push_back(risk2Estimator->getProbability(extractRouteRisk2(e), false) * 10);
-//    feats.push_back(weatherEstimator->getProbability(e.weather, false) * 10);
-//    feats.push_back(visibilityEstimator->getProbability(e.visibility, false) * 100);
-//    
-//    feats.push_back(congestionEstimator->getProbability(calcCongestionFactor(e), false) * 100); // 24
-//    
-//    if (train) {
-//        double val = collectFeatures(feats);
-//        rankEstimator->addValue(val, e.evt_cnt);
-//    }
+    feats.push_back(sourceEstimator->getProbability(e.source) * 100);
+    feats.push_back(distanceEstimator->getProbability(extractDistanceRange(e)) * 1000);
+    feats.push_back(cyclesEstimator->getProbability(e.cycles) * 10);
+    feats.push_back(complexityEstimator->getProbability(e.complexity) * 100);
+    feats.push_back(cargoEstimator->getProbability(e.cargo));
+    feats.push_back(stopsEstimator->getProbability(e.stops) * 10);
+    feats.push_back(startDayEstimator->getProbability(e.start_day));
+    feats.push_back(startMonthEstimator->getProbability(e.start_month));
+    feats.push_back(startDayOfMonthEstimator->getProbability(e.start_day_of_month) * 100);
+    feats.push_back(startDayOfWeekEstimator->getProbability(e.start_day_of_week) * 10);
+    feats.push_back(startTimeEstimator->getProbability(extractTimeRange(e)) * 100);
+    feats.push_back(daysEstimator->getProbability(e.days) * 100);
+    feats.push_back(pilotEstimator->getProbability(e.pilot) * 1000);
+    feats.push_back(pilot2Estimator->getProbability(e.pilot2) * 1000);
+    feats.push_back(pilotExpEstimator->getProbability(e.pilot_exp) * 10);
+    feats.push_back(pilotVisitsPrevEstimator->getProbability(e.pilot_visits_prev));
+    feats.push_back(pilotHoursPrevEstimator->getProbability(e.pilot_hours_prev) * 100);
+    feats.push_back(pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev) * 100);
+    feats.push_back(pilotDistPrevEstimator->getProbability(extractDistancePrevRange(e)));
+    feats.push_back(risk1Estimator->getProbability(extractRouteRisk1(e)));
+    feats.push_back(risk2Estimator->getProbability(extractRouteRisk2(e)) * 100);
+    feats.push_back(weatherEstimator->getProbability(e.weather) * 10);
+    feats.push_back(visibilityEstimator->getProbability(e.visibility) * 100);
     
-    feats.push_back(sourceEstimator->getProbability(e.source, false));
-    feats.push_back(extractDistanceRange(e));
-    feats.push_back(cyclesFreq[e.cycles]);
-    feats.push_back(e.complexity);
-    feats.push_back(cargoFreq[e.cargo]);
-    feats.push_back(stopsFreq[e.stops]);
-    feats.push_back(startDayEstimator->getProbability(e.start_day, false) * 100);
-    feats.push_back(startMonthEstimator->getProbability(e.start_month, false) * 10);
-    feats.push_back(startDayOfMonthEstimator->getProbability(e.start_day_of_month, false) * 100);
-    feats.push_back(startDayOfWeekEstimator->getProbability(e.start_day_of_week, false) * 10);
-    feats.push_back(extractTimeRange(e));
-    feats.push_back(e.days);
-    feats.push_back(pilotEstimator->getProbability(e.pilot, false) * 100);
-    feats.push_back(pilot2Estimator->getProbability(e.pilot2, false) * 100);
-    feats.push_back(pilotExpEstimator->getProbability(e.pilot_exp, true) * 10);// better experience - lower risk åßrank
-    feats.push_back(pilotVisitsPrevEstimator->getProbability(e.pilot_visits_prev, true));// better experience - lower risk rank
-    feats.push_back(extractPilotHoursPrev(e));
-//    feats.push_back(e.pilot_duty_hrs_prev);
-    feats.push_back(extractDistancePrevRange(e));
-    feats.push_back(extractRouteRisk1(e));
-    feats.push_back(extractRouteRisk2(e));
-    feats.push_back(weatherFreq[e.weather]);
-    feats.push_back(e.visibility);
-    
-    feats.push_back(calcCongestionFactor(e));
+    feats.push_back(traf0Estimator->getProbability(e.traf0) * 100);
+    feats.push_back(traf1Estimator->getProbability(e.traf1) * 100);
+    feats.push_back(traf2Estimator->getProbability(e.traf2) * 100);
+    feats.push_back(traf3Estimator->getProbability(e.traf3) * 100);
+    feats.push_back(traf4Estimator->getProbability(e.traf4) * 100);
     
     if (train) {
         double val = collectFeatures(feats);
-        rankEstimator->addValue(val, e.evt_cnt);
+        // to avoid extremes
+        collectFrequency(rankFreq, val, e.evt_cnt);
+        
+        
+        
+//        rankEstimator->addValue(val, e.evt_cnt);
     }
 }
 
@@ -2008,19 +2012,24 @@ void collectTrainingData(const Entry &e) {
     collectFrequency(pilot_expFreq, e.pilot_exp, e.evt_cnt);
     collectFrequency(pilot_visits_prevFreq, e.pilot_visits_prev, e.evt_cnt);
     
-    
     collectFrequency(pilot_dist_prevFreq, extractDistancePrevRange(e), e.evt_cnt);
     
     collectFrequency(route_risk_1Freq, extractRouteRisk1(e), e.evt_cnt);
     collectFrequency(route_risk_2Freq, extractRouteRisk2(e), e.evt_cnt);
     collectFrequency(weatherFreq, e.weather, e.evt_cnt);
     
+    collectFrequency(traf0Freq, e.traf0, e.evt_cnt);
+    collectFrequency(traf1Freq, e.traf1, e.evt_cnt);
+    collectFrequency(traf2Freq, e.traf2, e.evt_cnt);
+    collectFrequency(traf3Freq, e.traf3, e.evt_cnt);
+    collectFrequency(traf4Freq, e.traf4, e.evt_cnt);
+    
+    
     // train float estimators
-    congestionEstimator->addValue(calcCongestionFactor(e), e.evt_cnt);
     daysEstimator->addValue(e.days, e.evt_cnt);
     visibilityEstimator->addValue(e.visibility, e.evt_cnt);
-    pilotHoursPrevEstimator->addValue(extractPilotHoursPrev(e), e.evt_cnt);
-//    pilotDutyHoursPrevEstimator->addValue(e.pilot_duty_hrs_prev, e.evt_cnt);
+    pilotHoursPrevEstimator->addValue(e.pilot_hours_prev, e.evt_cnt);
+    pilotDutyHoursPrevEstimator->addValue(e.pilot_duty_hrs_prev, e.evt_cnt);
     
     // store events distribution
     if (e.evt_cnt > 0) {
@@ -2133,59 +2142,47 @@ inline void printCollectedFreq() {
     fprintf(stderr, "\n%s", "Events "); printWithIndex(eventsFreq);
 }
 
-inline void printEstimator(const Estimator &est, const VI &data, bool inverse) {
+inline void printEstimator(const Estimator &est, const VI &data) {
     for (int i = 0; i < data.size(); i++) {
-        Printf("%i:%f, ", i, est.getProbability(i, inverse));
+        Printf("%i:%f, ", i, est.getProbability(i));
     }
     cerr << endl;
 }
 
 inline void printTrainedEstimators() {
-    fprintf(stderr, "%s", "Source ID "); printEstimator(*sourceEstimator, sourceFreq, false);
-    fprintf(stderr, "\n%s", "Distance "); printEstimator(*distanceEstimator, distFreq, false);
-    fprintf(stderr, "\n%s", "Cycles "); printEstimator(*cyclesEstimator, cyclesFreq, false);
-    fprintf(stderr, "\n%s", "Complexity "); printEstimator(*complexityEstimator, complexityFreq, false);
-    fprintf(stderr, "\n%s", "Cargo "); printEstimator(*cargoEstimator, cargoFreq, false);
-    fprintf(stderr, "\n%s", "Stops "); printEstimator(*stopsEstimator, stopsFreq, false);
-    fprintf(stderr, "\n%s", "Start day "); printEstimator(*startDayEstimator, start_dayFreq, false);
-    fprintf(stderr, "\n%s", "Start month "); printEstimator(*startMonthEstimator, start_monthFreq, false);
-    fprintf(stderr, "\n%s", "Start day of month "); printEstimator(*startDayOfMonthEstimator, start_day_of_monthFreq, false);
-    fprintf(stderr, "\n%s", "Start day of week "); printEstimator(*startDayOfWeekEstimator, start_day_of_weekFreq, false);
-    fprintf(stderr, "\n%s", "Start time "); printEstimator(*startTimeEstimator, start_timeFreq, false);
+    fprintf(stderr, "%s", "Source ID "); printEstimator(*sourceEstimator, sourceFreq);
+    fprintf(stderr, "\n%s", "Distance "); printEstimator(*distanceEstimator, distFreq);
+    fprintf(stderr, "\n%s", "Cycles "); printEstimator(*cyclesEstimator, cyclesFreq);
+    fprintf(stderr, "\n%s", "Complexity "); printEstimator(*complexityEstimator, complexityFreq);
+    fprintf(stderr, "\n%s", "Cargo "); printEstimator(*cargoEstimator, cargoFreq);
+    fprintf(stderr, "\n%s", "Stops "); printEstimator(*stopsEstimator, stopsFreq);
+    fprintf(stderr, "\n%s", "Start day "); printEstimator(*startDayEstimator, start_dayFreq);
+    fprintf(stderr, "\n%s", "Start month "); printEstimator(*startMonthEstimator, start_monthFreq);
+    fprintf(stderr, "\n%s", "Start day of month "); printEstimator(*startDayOfMonthEstimator, start_day_of_monthFreq);
+    fprintf(stderr, "\n%s", "Start day of week "); printEstimator(*startDayOfWeekEstimator, start_day_of_weekFreq);
+    fprintf(stderr, "\n%s", "Start time "); printEstimator(*startTimeEstimator, start_timeFreq);
     
-    fprintf(stderr, "\n%s", "Pilot "); printEstimator(*pilotEstimator, pilotFreq, false);
-    fprintf(stderr, "\n%s", "Pilot2 "); printEstimator(*pilot2Estimator, pilot2Freq, false);
+    fprintf(stderr, "\n%s", "Pilot "); printEstimator(*pilotEstimator, pilotFreq);
+    fprintf(stderr, "\n%s", "Pilot2 "); printEstimator(*pilot2Estimator, pilot2Freq);
     
-    fprintf(stderr, "\n%s", "Pilot exp "); printEstimator(*pilotExpEstimator, pilot_expFreq, true);
-    fprintf(stderr, "\n%s", "Pilot visits prev "); printEstimator(*pilotVisitsPrevEstimator, pilot_visits_prevFreq, true);
+    fprintf(stderr, "\n%s", "Pilot exp "); printEstimator(*pilotExpEstimator, pilot_expFreq);
+    fprintf(stderr, "\n%s", "Pilot visits prev "); printEstimator(*pilotVisitsPrevEstimator, pilot_visits_prevFreq);
     
-    fprintf(stderr, "\n%s", "Route risk1 "); printEstimator(*risk1Estimator, route_risk_1Freq, false);
-    fprintf(stderr, "\n%s", "Route risk2 "); printEstimator(*risk2Estimator, route_risk_2Freq, false);
+    fprintf(stderr, "\n%s", "Route risk1 "); printEstimator(*risk1Estimator, route_risk_1Freq);
+    fprintf(stderr, "\n%s", "Route risk2 "); printEstimator(*risk2Estimator, route_risk_2Freq);
     
-    fprintf(stderr, "\n%s", "Weather "); printEstimator(*weatherEstimator, weatherFreq, false);
+    fprintf(stderr, "\n%s", "Weather "); printEstimator(*weatherEstimator, weatherFreq);
     
-    fprintf(stderr, "\n%s", "Pilot distance prev "); printEstimator(*pilotDistPrevEstimator, pilot_dist_prevFreq, false);
+    fprintf(stderr, "\n%s", "Pilot distance prev "); printEstimator(*pilotDistPrevEstimator, pilot_dist_prevFreq);
 }
 
 inline void printTrainedEstimators(const VE &data) {
-    fprintf(stderr, "\n%s", "Congestion ");
-    double maxCongestion = 0;
-    for (const Entry &e : data) {
-        if (e.evt_cnt > 0) {
-            double pred = congestionEstimator->getProbability(calcCongestionFactor(e), false);
-            Printf("%.1f:%f, ", calcCongestionFactor(e), pred);
-            if (pred > maxCongestion) {
-                maxCongestion = pred;
-            }
-        }
-    }
-    Printf("\nMax. days: %f\n", maxCongestion);
     
     fprintf(stderr, "\n%s", "Days ");
     double maxDays = 0;
     for (const Entry &e : data) {
         if (e.evt_cnt > 0) {
-            double pred = daysEstimator->getProbability(e.days, false);
+            double pred = daysEstimator->getProbability(e.days);
             Printf("%.1f:%f, ", e.days, pred);
             if (pred > maxDays) {
                 maxDays = pred;
@@ -2198,7 +2195,7 @@ inline void printTrainedEstimators(const VE &data) {
     double maxVisibility = 0;
     for (const Entry &e : data) {
         if (e.evt_cnt > 0) {
-            double pred = visibilityEstimator->getProbability(e.visibility, false);
+            double pred = visibilityEstimator->getProbability(e.visibility);
             Printf("%.1f:%f, ", e.visibility, pred);
             if (pred > maxVisibility) {
                 maxVisibility = pred;
@@ -2211,7 +2208,7 @@ inline void printTrainedEstimators(const VE &data) {
     double maxHours = 0;
     for (const Entry &e : data) {
         if (e.evt_cnt > 0) {
-            double pred = pilotHoursPrevEstimator->getProbability(e.pilot_hours_prev, false);
+            double pred = pilotHoursPrevEstimator->getProbability(e.pilot_hours_prev);
             Printf("%.1f:%f, ", e.pilot_hours_prev, pred);
             if (pred > maxHours) {
                 maxHours = pred;
@@ -2220,24 +2217,24 @@ inline void printTrainedEstimators(const VE &data) {
     }
     Printf("\nMax. pilot_hours_prev: %f\n", maxHours);
     
-//    fprintf(stderr, "\n%s", "pilot_duty_hrs_prev ");
-//    double maxDutyHours = 0;
-//    for (const Entry &e : data) {
-//        if (e.evt_cnt > 0) {
-//            double pred = pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev, false);
-//            Printf("%.1f:%f, ", e.pilot_duty_hrs_prev, pred);
-//            if (pred > maxDutyHours) {
-//                maxDutyHours = pred;
-//            }
-//        }
-//    }
-//    Printf("\nMax. pilot_duty_hrs_prev: %f\n", maxDutyHours);
+    fprintf(stderr, "\n%s", "pilot_duty_hrs_prev ");
+    double maxDutyHours = 0;
+    for (const Entry &e : data) {
+        if (e.evt_cnt > 0) {
+            double pred = pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev);
+            Printf("%.1f:%f, ", e.pilot_duty_hrs_prev, pred);
+            if (pred > maxDutyHours) {
+                maxDutyHours = pred;
+            }
+        }
+    }
+    Printf("\nMax. pilot_duty_hrs_prev: %f\n", maxDutyHours);
     
     fprintf(stderr, "\n%s", "pilot_dist_prev ");
     double maxDistPrev = 0;
     for (const Entry &e : data) {
         if (e.evt_cnt > 0) {
-            double pred = pilotDistPrevEstimator->getProbability(e.pilot_dist_prev, false);
+            double pred = pilotDutyHoursPrevEstimator->getProbability(e.pilot_dist_prev);
             Printf("%.1f:%f, ", e.pilot_dist_prev, pred);
             if (pred > maxDistPrev) {
                 maxDistPrev = pred;
@@ -2246,33 +2243,6 @@ inline void printTrainedEstimators(const VE &data) {
     }
     Printf("\nMax. pilot_dist_prev: %f\n", maxDistPrev);
 }
-#ifdef USE_KNN_CLASSIFICATION
-inline void createTrainExamples(const VE &trainEntries, const Matrix &mat, TRAINING_EXAMPLES_LIST &rlist) {
-    for (int i = 0; i < mat.rows(); i++) {
-        TrainingExample example;
-        // copy features
-        for (int j = 0; j < mat.cols() - 1; j++) {
-            example.Value[j] = mat[i][j];
-        }
-        // copy DV
-        example.Value[NO_OF_ATT - 1] = mat[i][mat.cols() - 1];
-        
-        // Generating random weights for instances.
-        // These weights are used in instance WKNN
-        double rno = (double)(rand () % 100 + 1);
-        example.Weight = rno / 100;
-        example.index = trainEntries[i].route_id;
-        example.isNearest2AtleastSome = false;
-        
-        //            cerr << "Entry id: " << entries[i].id << ", features: ";print(entries[i].features);
-        
-//        printExample(example);
-        
-        // add to the list
-        rlist.push_back(example);
-    }
-}
-#endif
 
 #ifdef USE_REGERESSION
 struct GBTConfig {
@@ -2323,89 +2293,6 @@ void storeMatrixAsLibSVM(const char* fileName, const Matrix &mat, int classCol =
 //
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //
-void correctOutliers(const VI &indices, Matrix &mat, const double of = 1.5, const double evf = 3) {
-    size_t indCount = indices.size();
-    assert(indCount < mat.cols());
-    
-    int	half, quarter;
-    double q1, q2, q3;
-    
-    VD upperExtremeValue(indCount, 0);
-    VD upperOutlier(indCount, 0);
-    VD lowerOutlier(indCount, 0);
-    VD lowerExtremeValue(indCount, 0);
-    VD median(indCount, 0);
-    VD IQR(indCount, 0);
-    
-    //
-    // find inetrquartile distances
-    //
-    VD values(mat.rows(), 0);
-    for (int j = 0; j < indCount; j++) {
-        mat.columnToArray(indices[j], values);
-        std::sort(values.begin(), values.end());
-        
-        // determine indices
-        half = (int)values.size() / 2;
-        quarter = half / 2;
-        
-        // find quartiles
-        if (values.size() % 2 == 1) {
-            // odd
-            q2 = values[half];
-        } else {
-            // even
-            q2 = (values[half] + values[half - 1]) / 2;
-        }
-        
-        if (half % 2 == 1) {
-            // odd
-            q1 = values[quarter];
-            q3 = values[values.size() - quarter - 1];
-        }
-        else {
-            // even
-            q1 = (values[quarter] + values[quarter - 1]) / 2;
-            q3 = (values[values.size() - quarter - 1] + values[values.size() - quarter]) / 2;
-        }
-        
-        // determine thresholds and other values
-        median[j] = q2;
-        IQR[j] = q3 - q1;
-        upperExtremeValue[j] = q3 + evf * IQR[j];
-        upperOutlier[j] = q3 + of * IQR[j];
-        lowerOutlier[j] = q1 - of * IQR[j];
-        lowerExtremeValue[j] = q1 - evf * IQR[j];
-    }
-    
-    //
-    // Correct input matrix
-    //
-    // obtain a seed from the system clock:
-    unsigned int seed = (unsigned int)std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_real_distribution<double> rnd(0.0, 1.0);
-    size_t m = mat.rows();
-    for (int row = 0 ; row < m; row++) {
-        for (int j = 0; j < indCount; j++) {
-            double val = mat[row][indices[j]];
-            if (val < lowerExtremeValue[j]) {
-                mat[row][indices[j]] = lowerOutlier[j];
-            } else if (val < lowerOutlier[j]) {
-                double lowerRange = median[j] - lowerOutlier[j];
-                mat[row][indices[j]] = median[j] - rnd(generator) * lowerRange;
-            } else if (val > upperExtremeValue[j]) {
-                mat[row][indices[j]] = upperOutlier[j];
-            } else if (val > upperOutlier[j]){
-                double upperRange = upperOutlier[j] - median[j];
-                mat[row][indices[j]] = median[j] + rnd(generator) * upperRange;
-            }
-        }
-    }
-}
-//
-// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
 
 bool sortByPrediction(const Entry &e1, const Entry &e2) {
     return e1.predicted < e2.predicted;
@@ -2418,7 +2305,6 @@ bool sortByInitialOrder(const Entry &e1, const Entry &e2) {
 class TripSafetyFactors {
     size_t X;
     size_t Y;
-    int featDimens = 23;//24;
     
 public:
     VI predict(const VS &trainingData, const VS &testingData) {
@@ -2445,45 +2331,37 @@ public:
         }
         
         // collect features
-        
-        Matrix trainM(0, featDimens + 1);// last is class value
+        Matrix trainM(0, featNum + 1);// last is class value
         for (int i = 0; i < trainEntries.size(); i++) {
             VD row;
             createEntryFeatures(trainEntries[i], true, row);
             row.push_back(trainEntries[i].evt_cnt);
             trainM.addRow(row);
         }
-        Matrix testM(0, featDimens);
+        Matrix testM(0, featNum);
         for (const Entry &e : testEntries) {
             VD row;
             createEntryFeatures(e, false, row);
             testM.addRow(row);
         }
         
-        // correct ouliers
-//        VI indices = {12};
-//        correctOutliers(indices, trainM);
-//        correctOutliers(indices, testM);
         
-        
-//        char buff[200];
-//        realpath("./train.libsvm", buff);
-//        Printf("%s", buff);
+        //        char buff[200];
+        //        realpath("./train.libsvm", buff);
+        //        Printf("%s", buff);
 #ifdef LOCAL
         storeMatrixAsLibSVM("/Users/yaric/train.libsvm", trainM);
 #endif
+        
         // do classification
 #ifdef USE_ESTIMATORS
-        rank(trainM, trainEntries, testM, testEntries);
-#endif
-#ifdef USE_KNN_CLASSIFICATION
         rank(trainM, trainEntries, testM, testEntries);
 #endif
 #ifdef USE_REGERESSION
         rank(trainM, trainEntries, testM, testEntries);
 #endif
         
-        sort(testEntries.begin(), testEntries.end(), sortByPrediction);
+        sort(testEntries.rbegin(), testEntries.rend(), sortByPrediction);
         for (int i = 0; i < Y; i++) {
             testEntries[i].risk_rank = i + 1;
         }
@@ -2503,12 +2381,27 @@ private:
         cerr << "=========== Rank by Estimators ===========" << endl;
         
         double startTime = getTime();
+        NormalEstimator rankEstimator(1);
+        FORE(i, 0, rankFreq, &rankEstimator);
+        
         // predict
         for (int i = 0; i < Y; i++) {
             double val = collectFeatures(testM[i]);
-            testEntries[i].predicted = rankEstimator->getProbability(val);
             
-            Printf("Id: %i, events: %f\n", i, testEntries[i].predicted);
+            
+            if (val > 100000) {
+                testEntries[i].predicted = 4;
+            } else if (val > 50000) {
+                testEntries[i].predicted = 3;
+            } else if (val > 10000) {
+                testEntries[i].predicted = 2;
+//            } else if (val > 9000) {
+//                testEntries[i].predicted = 1;
+            } else {
+                testEntries[i].predicted = rankEstimator.getProbability(val);
+            }
+            
+            Printf("Id: %i, events: %f, val: %f\n", i, testEntries[i].predicted, val);
         }
         
         double finishTime = getTime();
@@ -2526,16 +2419,16 @@ private:
         //----------------------------------------------------
         GBTConfig conf;
         conf.sampling_size_ratio = 0.5;
-        conf.learning_rate = 0.001;
+        conf.learning_rate = 0.01;
         conf.tree_min_nodes = 10;
-        conf.tree_depth = 7;
-        conf.tree_number = 50;
+        conf.tree_depth = 3;
+        conf.tree_number = 22;
         
         //----------------------------------------------------
         
         VVD input_x = trainM.A;
         VD input_y;
-        trainM.columnToArray(featDimens, input_y);
+        trainM.columnToArray(featNum, input_y);
         
         // train
         GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);

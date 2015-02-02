@@ -179,8 +179,8 @@ namespace am {
                 
                 // shuffle loaded data
                 // obtain a time-based seed:
-                unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-                shuffle(dataLines.begin(), dataLines.end(), std::default_random_engine(seed));
+//                unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+//                shuffle(dataLines.begin(), dataLines.end(), std::default_random_engine(seed));
                 
                 fprintf(stderr, "Loaded: %lu lines\n", dataLines.size());
                 
