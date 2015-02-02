@@ -22,7 +22,7 @@ public:
      * @param data the value to estimate the probability of
      * @return the estimated probability of the supplied value
      */
-    virtual double getProbability(double data, bool inverse) const = 0;
+    virtual double getProbability(double data) const = 0;
     
     /**
      * Add a new data value to the current estimator.
@@ -69,11 +69,8 @@ public:
      * @param data the value to estimate the probability of
      * @return the estimated probability of the supplied value
      */
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         double p = Poisson(data);
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
  
@@ -172,7 +169,7 @@ public:
      * @param data the value to estimate the probability of
      * @return the estimated probability of the supplied value
      */
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         
         data = round(data);
         double zLower = (data - m_Mean - (m_Precision / 2)) / m_StandardDev;
@@ -182,10 +179,6 @@ public:
         double pUpper = normalProbability(zUpper);
         
         double p = pUpper - pLower;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
     
@@ -303,7 +296,7 @@ public:
      * @param data the value to estimate the probability of
      * @return the estimated probability of the supplied value
      */
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         
         double delta = 0, sum = 0, currentProb = 0;
         double zLower = 0, zUpper = 0;
@@ -337,10 +330,6 @@ public:
             }
         }
         double p = sum / m_SumOfWeights;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
     
@@ -441,15 +430,11 @@ public:
      * @param data the value to estimate the probability of
      * @return the estimated probability of the supplied value
      */
-    double getProbability(double data, bool inverse) const {
+    double getProbability(double data) const {
         if (m_SumOfCounts == 0) {
             return 0;
         }
         double p = (double)m_Counts[(int)data] / m_SumOfCounts;
-        
-        if (inverse) {
-            p =  1 - p;
-        }
         return p;
     }
 };
