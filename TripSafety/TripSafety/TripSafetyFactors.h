@@ -102,426 +102,6 @@ inline double getTime() {
 //
 // ----------------------------
 //
-static const double SQRTH  =  7.07106781186547524401E-1;
-static const double MAXLOG =  7.09782712893383996732E2;
-
-double errorFunction(double x);
-
-double p1evl( double x, double coef[], int N ) {
-    
-    double ans;
-    ans = x + coef[0];
-    
-    for(int i = 1; i < N; i++) ans = ans * x + coef[i];
-    
-    return ans;
-}
-
-double polevl( double x, double coef[], int N ) {
-    
-    double ans;
-    ans = coef[0];
-    
-    for(int i = 1; i <= N; i++) ans = ans * x + coef[i];
-    
-    return ans;
-}
-
-double errorFunctionComplemented(double a) {
-    double x,y,z,p,q;
-    
-    double P[] = {
-        2.46196981473530512524E-10,
-        5.64189564831068821977E-1,
-        7.46321056442269912687E0,
-        4.86371970985681366614E1,
-        1.96520832956077098242E2,
-        5.26445194995477358631E2,
-        9.34528527171957607540E2,
-        1.02755188689515710272E3,
-        5.57535335369399327526E2
-    };
-    double Q[] = {
-        1.32281951154744992508E1,
-        8.67072140885989742329E1,
-        3.54937778887819891062E2,
-        9.75708501743205489753E2,
-        1.82390916687909736289E3,
-        2.24633760818710981792E3,
-        1.65666309194161350182E3,
-        5.57535340817727675546E2
-    };
-    
-    double R[] = {
-        5.64189583547755073984E-1,
-        1.27536670759978104416E0,
-        5.01905042251180477414E0,
-        6.16021097993053585195E0,
-        7.40974269950448939160E0,
-        2.97886665372100240670E0
-    };
-    double S[] = {
-        2.26052863220117276590E0,
-        9.39603524938001434673E0,
-        1.20489539808096656605E1,
-        1.70814450747565897222E1,
-        9.60896809063285878198E0,
-        3.36907645100081516050E0
-    };
-    
-    if( a < 0.0 )   x = -a;
-    else            x = a;
-    
-    if( x < 1.0 )   return 1.0 - errorFunction(a);
-    
-    z = -a * a;
-    
-    if( z < -MAXLOG ) {
-        if( a < 0 )  return( 2.0 );
-        else         return( 0.0 );
-    }
-    
-    z = std::exp(z);
-    
-    if( x < 8.0 ) {
-        p = polevl( x, P, 8 );
-        q = p1evl( x, Q, 8 );
-    } else {
-        p = polevl( x, R, 5 );
-        q = p1evl( x, S, 6 );
-    }
-    
-    y = (z * p)/q;
-    
-    if( a < 0 ) y = 2.0 - y;
-    
-    if( y == 0.0 ) {
-        if( a < 0 ) return 2.0;
-        else        return( 0.0 );
-    }
-    return y;
-}
-
-double errorFunction(double x) {
-    double y, z;
-    double T[] = {
-        9.60497373987051638749E0,
-        9.00260197203842689217E1,
-        2.23200534594684319226E3,
-        7.00332514112805075473E3,
-        5.55923013010394962768E4
-    };
-    double U[] = {
-        3.35617141647503099647E1,
-        5.21357949780152679795E2,
-        4.59432382970980127987E3,
-        2.26290000613890934246E4,
-        4.92673942608635921086E4
-    };
-    
-    if( std::abs(x) > 1.0 ) return( 1.0 - errorFunctionComplemented(x) );
-    z = x * x;
-    y = x * polevl( z, T, 4 ) / p1evl( z, U, 5 );
-    return y;
-}
-
-double normalProbability(double a) {
-    double x, y, z;
-    
-    x = a * SQRTH;
-    z = std::abs(x);
-    
-    if( z < SQRTH ) y = 0.5 + 0.5 * errorFunction(x);
-    else {
-        y = 0.5 * errorFunctionComplemented(z);
-        if( x > 0 )  y = 1.0 - y;
-    }
-    return y;
-}
-
-/** The small deviation allowed in double comparisons. */
-const static double SMALL = 1e-6;
-
-class Estimator {
-public:
-    virtual double getProbability(double data) const = 0;
-
-    virtual void addValue(double data, double weight) = 0;
-};
-
-class PoissonEstimator : public Estimator {
-    /** The number of values seen */
-    double m_NumValues;
-    /** The sum of the values seen */
-    double m_SumOfValues;
-    /**
-     * The average number of times
-     * an event occurs in an interval.
-     */
-    double m_Lambda;
-public:
-    void addValue(double data, double weight) {
-        m_NumValues += weight;
-        m_SumOfValues += data * weight;
-        if (m_NumValues != 0) {
-            m_Lambda = m_SumOfValues / m_NumValues;
-        }
-    }
-    double getProbability(double data) const {
-        double p = Poisson(data);
-        return p;
-    }
-    
-private:
-    double logFac(double x) const {
-        double result = 0;
-        for (double i = 2; i <= x; i++) {
-            result += std::log(i);
-        }
-        return result;
-    }
-    double Poisson(double x) const {
-        return std::exp(-m_Lambda + (x * std::log(m_Lambda)) - logFac(x));
-    }
-};
-class NormalEstimator : public Estimator {
-    /** The sum of the weights */
-    double m_SumOfWeights;
-    /** The sum of the values seen */
-    double m_SumOfValues;
-    /** The sum of the values squared */
-    double m_SumOfValuesSq;
-    /** The current mean */
-    double m_Mean;
-    /** The current standard deviation */
-    double m_StandardDev;
-    /** The precision of numeric values ( = minimum std dev permitted) */
-    double m_Precision;
-    
-public:
-    NormalEstimator(double precision) {
-        m_Precision = precision;
-        // Allow at most 3 sd's within one interval
-        m_StandardDev = m_Precision / (2 * 3);
-    }
-    void addValue(double data, double weight) {
-        if (weight == 0) {
-            return;
-        }
-        data = round(data);
-        m_SumOfWeights += weight;
-        m_SumOfValues += data * weight;
-        m_SumOfValuesSq += data * data * weight;
-        
-        if (m_SumOfWeights > 0) {
-            m_Mean = m_SumOfValues / m_SumOfWeights;
-            double stdDev = std::sqrt(std::abs(m_SumOfValuesSq - m_Mean * m_SumOfValues) / m_SumOfWeights);
-            // If the stdDev ~= 0, we really have no idea of scale yet,
-            // so stick with the default. Otherwise...
-            if (stdDev > 1e-10) {
-                m_StandardDev = std::max(m_Precision / (2 * 3),
-                                         // allow at most 3sd's within one interval
-                                         stdDev);
-            }
-        }
-    }
-    double getProbability(double data) const {
-        
-        data = round(data);
-        double zLower = (data - m_Mean - (m_Precision / 2)) / m_StandardDev;
-        double zUpper = (data - m_Mean + (m_Precision / 2)) / m_StandardDev;
-        
-        double pLower = normalProbability(zLower);
-        double pUpper = normalProbability(zUpper);
-        
-        double p = pUpper - pLower;
-        return p;
-    }
-    
-private:
-    double round(double data) const {
-        
-        return std::rint(data / m_Precision) * m_Precision;
-    }
-};
-class KernelEstimator : public Estimator {
-    /** Vector containing all of the values seen */
-    std::vector<double> m_Values;
-    /** Vector containing the associated weights */
-    std::vector<double> m_Weights;
-    /** Number of values stored in m_Weights and m_Values so far */
-    int m_NumValues;
-    /** The sum of the weights so far */
-    double m_SumOfWeights;
-    /** The standard deviation */
-    double m_StandardDev;
-    /** The precision of data values */
-    double m_Precision;
-    /** Whether we can optimise the kernel summation */
-    bool m_AllWeightsOne;
-    /** Maximum percentage error permitted in probability calculations */
-    double MAX_ERROR = 0.01;
-    
-public:
-    KernelEstimator(double precision) {
-        
-        m_Values.resize(50, 0);
-        m_Weights.resize(50, 0);
-        
-        m_NumValues = 0;
-        m_SumOfWeights = 0;
-        m_AllWeightsOne = true;
-        m_Precision = precision;
-        // precision cannot be zero
-        if (m_Precision < SMALL) m_Precision = SMALL;
-        m_StandardDev = m_Precision / (2 * 3);
-    }
-    void addValue(double data, double weight) {
-        
-        if (weight == 0) {
-            return;
-        }
-        data = round(data);
-        int insertIndex = findNearestValue(data);
-        if ((m_NumValues <= insertIndex) || (m_Values[insertIndex] != data)) {
-            if (m_NumValues < m_Values.size()) {
-                int left = m_NumValues - insertIndex;
-                std::copy(m_Values.begin() + insertIndex, m_Values.begin() + insertIndex + left, m_Values.begin() + insertIndex + 1);
-                std::copy(m_Weights.begin() + insertIndex, m_Weights.begin() + insertIndex + left, m_Weights.begin() + insertIndex + 1);
-                m_Values[insertIndex] = data;
-                m_Weights[insertIndex] = weight;
-                m_NumValues++;
-            } else {
-                std::vector<double>newValues(m_Values.size() * 2, 0);
-                std::vector<double>newWeights(m_Values.size() * 2, 0);
-                int left = m_NumValues - insertIndex;
-                std::copy(m_Values.begin(), m_Values.begin() + insertIndex, newValues.begin());
-                std::copy(m_Weights.begin(), m_Weights.begin() + insertIndex, newWeights.begin());
-                newValues[insertIndex] = data;
-                newWeights[insertIndex] = weight;
-                std::copy(m_Values.begin() + insertIndex, m_Values.begin() + insertIndex + left, newValues.begin() + insertIndex + 1);
-                std::copy(m_Weights.begin() + insertIndex, m_Weights.begin() + insertIndex + left, newWeights.begin() + insertIndex + 1);
-                m_NumValues++;
-                m_Values = newValues;
-                m_Weights = newWeights;
-            }
-            if (weight != 1) {
-                m_AllWeightsOne = false;
-            }
-        } else {
-            m_Weights[insertIndex] += weight;
-            m_AllWeightsOne = false;
-        }
-        m_SumOfWeights += weight;
-        double range = m_Values[m_NumValues - 1] - m_Values[0];
-        if (range > 0) {
-            m_StandardDev = std::max(range / std::sqrt(m_SumOfWeights),
-                                     // allow at most 3 sds within one interval
-                                     m_Precision / (2 * 3));
-        }
-    }
-    double getProbability(double data) const {
-        
-        double delta = 0, sum = 0, currentProb = 0;
-        double zLower = 0, zUpper = 0;
-        if (m_NumValues == 0) {
-            zLower = (data - (m_Precision / 2)) / m_StandardDev;
-            zUpper = (data + (m_Precision / 2)) / m_StandardDev;
-            return (normalProbability(zUpper) - normalProbability(zLower));
-        }
-        double weightSum = 0;
-        int start = findNearestValue(data);
-        for (int i = start; i < m_NumValues; i++) {
-            delta = m_Values[i] - data;
-            zLower = (delta - (m_Precision / 2)) / m_StandardDev;
-            zUpper = (delta + (m_Precision / 2)) / m_StandardDev;
-            currentProb = (normalProbability(zUpper) - normalProbability(zLower));
-            sum += currentProb * m_Weights[i];
-            weightSum += m_Weights[i];
-            if (currentProb * (m_SumOfWeights - weightSum) < sum * MAX_ERROR) {
-                break;
-            }
-        }
-        for (int i = start - 1; i >= 0; i--) {
-            delta = m_Values[i] - data;
-            zLower = (delta - (m_Precision / 2)) / m_StandardDev;
-            zUpper = (delta + (m_Precision / 2)) / m_StandardDev;
-            currentProb = (normalProbability(zUpper) - normalProbability(zLower));
-            sum += currentProb * m_Weights[i];
-            weightSum += m_Weights[i];
-            if (currentProb * (m_SumOfWeights - weightSum) < sum * MAX_ERROR) {
-                break;
-            }
-        }
-        double p = sum / m_SumOfWeights;
-        return p;
-    }
-    
-    
-private:
-    int findNearestValue(double key) const {
-        int low = 0;
-        int high = m_NumValues;
-        int middle = 0;
-        while (low < high) {
-            middle = (low + high) / 2;
-            double current = m_Values[middle];
-            if (current == key) {
-                return middle;
-            }
-            if (current > key) {
-                high = middle;
-            } else if (current < key) {
-                low = middle + 1;
-            }
-        }
-        return low;
-    }
-    double round(double data) {
-        return std::rint(data / m_Precision) * m_Precision;
-    }
-};
-class DiscreteEstimator : public Estimator {
-    /** Hold the counts */
-    std::vector<double> m_Counts;
-    /** Hold the sum of counts */
-    double m_SumOfCounts;
-    
-public:
-    DiscreteEstimator(int numSymbols, bool laplace) {
-        if (laplace) {
-            m_Counts.resize(numSymbols, 1);
-            m_SumOfCounts = (double)numSymbols;
-        } else {
-            m_Counts.resize(numSymbols, 0);
-            m_SumOfCounts = 0;
-        }
-    }
-    DiscreteEstimator(int nSymbols, double fPrior) {
-        m_Counts.resize(nSymbols, 0);
-        for(int iSymbol = 0; iSymbol < nSymbols; iSymbol++) {
-            m_Counts[iSymbol] = fPrior;
-        }
-        m_SumOfCounts = fPrior * (double) nSymbols;
-    }
-    void addValue(double data, double weight) {
-        if ((int)data < m_Counts.size()) {
-            m_Counts[(int)data] += weight;
-            m_SumOfCounts += weight;
-        }
-    }
-    double getProbability(double data) const {
-        if (m_SumOfCounts == 0) {
-            return 0;
-        }
-        double p = (double)m_Counts[(int)data] / m_SumOfCounts;
-        return p;
-    }
-};
-
-//
-// ----------------------------
-//
 class Vector;
 
 class Matrix {
@@ -938,764 +518,663 @@ Vector& Matrix::stdev(const int ddof)  {
 //
 // -----------------------------------------
 //
-template <class T>
-void concatenate(VC<T> &first, const VC<T> &second) {
-    size_t size = second.size();
-    if (first.size() < size) {
-        // resize
-        first.resize(size);
-    }
-    // update
-    for (int i = 0; i < size; i++) {
-        first[i] += second[i];
-    }
+static const double SQRTH  =  7.07106781186547524401E-1;
+static const double MAXLOG =  7.09782712893383996732E2;
+
+double errorFunction(double x);
+
+double p1evl( double x, double coef[], int N ) {
+    
+    double ans;
+    ans = x + coef[0];
+    
+    for(int i = 1; i < N; i++) ans = ans * x + coef[i];
+    
+    return ans;
 }
 
-template<class bidiiter> bidiiter
-random_unique(bidiiter begin, bidiiter end, size_t num_random) {
-    size_t left = std::distance(begin, end);
-    while (num_random--) {
-        bidiiter r = begin;
-        std::advance(r, rand()%left);
-        std::swap(*begin, *r);
-        ++begin;
-        --left;
-    }
-    return begin;
+double polevl( double x, double coef[], int N ) {
+    
+    double ans;
+    ans = coef[0];
+    
+    for(int i = 1; i <= N; i++) ans = ans * x + coef[i];
+    
+    return ans;
 }
 
-class RandomSample {
-    // class members
-    // generate "m_number" of data with the value within the range [0, m_max].
-    int m_max;
-    int m_number;
+double errorFunctionComplemented(double a) {
+    double x,y,z,p,q;
+    
+    double P[] = {
+        2.46196981473530512524E-10,
+        5.64189564831068821977E-1,
+        7.46321056442269912687E0,
+        4.86371970985681366614E1,
+        1.96520832956077098242E2,
+        5.26445194995477358631E2,
+        9.34528527171957607540E2,
+        1.02755188689515710272E3,
+        5.57535335369399327526E2
+    };
+    double Q[] = {
+        1.32281951154744992508E1,
+        8.67072140885989742329E1,
+        3.54937778887819891062E2,
+        9.75708501743205489753E2,
+        1.82390916687909736289E3,
+        2.24633760818710981792E3,
+        1.65666309194161350182E3,
+        5.57535340817727675546E2
+    };
+    
+    double R[] = {
+        5.64189583547755073984E-1,
+        1.27536670759978104416E0,
+        5.01905042251180477414E0,
+        6.16021097993053585195E0,
+        7.40974269950448939160E0,
+        2.97886665372100240670E0
+    };
+    double S[] = {
+        2.26052863220117276590E0,
+        9.39603524938001434673E0,
+        1.20489539808096656605E1,
+        1.70814450747565897222E1,
+        9.60896809063285878198E0,
+        3.36907645100081516050E0
+    };
+    
+    if( a < 0.0 )   x = -a;
+    else            x = a;
+    
+    if( x < 1.0 )   return 1.0 - errorFunction(a);
+    
+    z = -a * a;
+    
+    if( z < -MAXLOG ) {
+        if( a < 0 )  return( 2.0 );
+        else         return( 0.0 );
+    }
+    
+    z = std::exp(z);
+    
+    if( x < 8.0 ) {
+        p = polevl( x, P, 8 );
+        q = p1evl( x, Q, 8 );
+    } else {
+        p = polevl( x, R, 5 );
+        q = p1evl( x, S, 6 );
+    }
+    
+    y = (z * p)/q;
+    
+    if( a < 0 ) y = 2.0 - y;
+    
+    if( y == 0.0 ) {
+        if( a < 0 ) return 2.0;
+        else        return( 0.0 );
+    }
+    return y;
+}
+
+double errorFunction(double x) {
+    double y, z;
+    double T[] = {
+        9.60497373987051638749E0,
+        9.00260197203842689217E1,
+        2.23200534594684319226E3,
+        7.00332514112805075473E3,
+        5.55923013010394962768E4
+    };
+    double U[] = {
+        3.35617141647503099647E1,
+        5.21357949780152679795E2,
+        4.59432382970980127987E3,
+        2.26290000613890934246E4,
+        4.92673942608635921086E4
+    };
+    
+    if( std::abs(x) > 1.0 ) return( 1.0 - errorFunctionComplemented(x) );
+    z = x * x;
+    y = x * polevl( z, T, 4 ) / p1evl( z, U, 5 );
+    return y;
+}
+
+double normalProbability(double a) {
+    double x, y, z;
+    
+    x = a * SQRTH;
+    z = std::abs(x);
+    
+    if( z < SQRTH ) y = 0.5 + 0.5 * errorFunction(x);
+    else {
+        y = 0.5 * errorFunctionComplemented(z);
+        if( x > 0 )  y = 1.0 - y;
+    }
+    return y;
+}
+
+/** The small deviation allowed in double comparisons. */
+const static double SMALL = 1e-6;
+
+class Estimator {
+public:
+    virtual double getProbability(double data) const = 0;
+    
+    virtual void addValue(double data, double weight) = 0;
+};
+
+class PoissonEstimator : public Estimator {
+    /** The number of values seen */
+    double m_NumValues;
+    /** The sum of the values seen */
+    double m_SumOfValues;
+    /**
+     * The average number of times
+     * an event occurs in an interval.
+     */
+    double m_Lambda;
+public:
+    void addValue(double data, double weight) {
+        m_NumValues += weight;
+        m_SumOfValues += data * weight;
+        if (m_NumValues != 0) {
+            m_Lambda = m_SumOfValues / m_NumValues;
+        }
+    }
+    double getProbability(double data) const {
+        double p = Poisson(data);
+        return p;
+    }
+    
+private:
+    double logFac(double x) const {
+        double result = 0;
+        for (double i = 2; i <= x; i++) {
+            result += std::log(i);
+        }
+        return result;
+    }
+    double Poisson(double x) const {
+        return std::exp(-m_Lambda + (x * std::log(m_Lambda)) - logFac(x));
+    }
+};
+class NormalEstimator : public Estimator {
+    /** The sum of the weights */
+    double m_SumOfWeights;
+    /** The sum of the values seen */
+    double m_SumOfValues;
+    /** The sum of the values squared */
+    double m_SumOfValuesSq;
+    /** The current mean */
+    double m_Mean;
+    /** The current standard deviation */
+    double m_StandardDev;
+    /** The precision of numeric values ( = minimum std dev permitted) */
+    double m_Precision;
     
 public:
-    RandomSample(int max, int number) : m_max(max), m_number(number) {}
-    
-    inline VI get_sample_index() {
-        // fill vector with indices
-        VI re_res(m_max);
-        for (int i = 0; i < m_max; ++i)
-            re_res[i] = i;
-        
-        // suffle
-        random_unique(re_res.begin(), re_res.end(), m_number);
-        
-        // resize vector
-        re_res.resize(m_number);
-        VI(re_res).swap(re_res);
-        
-        return re_res;
+    NormalEstimator(double precision) {
+        m_Precision = precision;
+        // Allow at most 3 sd's within one interval
+        m_StandardDev = m_Precision / (2 * 3);
     }
-};
-
-struct Node {
-    double m_node_value;
-    int m_feature_index;
-    double m_terminal_left;
-    double m_terminal_right;
-    
-    // Each non-leaf node has a left child and a right child.
-    Node *m_left_child = NULL;
-    Node *m_right_child = NULL;
-    
-    // Construction function
-    Node(double value, int feature_index, double value_left, double value_right) :
-    m_node_value(value), m_feature_index(feature_index), m_terminal_left(value_left), m_terminal_right(value_right) {}
+    void addValue(double data, double weight) {
+        if (weight == 0) {
+            return;
+        }
+        data = round(data);
+        m_SumOfWeights += weight;
+        m_SumOfValues += data * weight;
+        m_SumOfValuesSq += data * data * weight;
+        
+        if (m_SumOfWeights > 0) {
+            m_Mean = m_SumOfValues / m_SumOfWeights;
+            double stdDev = std::sqrt(std::abs(m_SumOfValuesSq - m_Mean * m_SumOfValues) / m_SumOfWeights);
+            // If the stdDev ~= 0, we really have no idea of scale yet,
+            // so stick with the default. Otherwise...
+            if (stdDev > 1e-10) {
+                m_StandardDev = std::max(m_Precision / (2 * 3),
+                                         // allow at most 3sd's within one interval
+                                         stdDev);
+            }
+        }
+    }
+    double getProbability(double data) const {
+        
+        data = round(data);
+        double zLower = (data - m_Mean - (m_Precision / 2)) / m_StandardDev;
+        double zUpper = (data - m_Mean + (m_Precision / 2)) / m_StandardDev;
+        
+        double pLower = normalProbability(zLower);
+        double pUpper = normalProbability(zUpper);
+        
+        double p = pUpper - pLower;
+        return p;
+    }
     
 private:
-    
-    Node(Node const &); // non construction-copyable
-    Node& operator=(Node const &); // non copyable
-};
-
-struct BestSplit {
-    // the index of split feature
-    int m_feature_index;
-    // the calculated node value
-    double m_node_value;
-    // if false - split failed
-    bool m_status;
-    
-    // construction function
-    BestSplit() : m_feature_index(0.0), m_node_value(0.0), m_status(false) {}
-};
-
-struct SplitRes {
-    VC<VD> m_feature_left;
-    VC<VD> m_feature_right;
-    double m_left_value = 0.0;
-    double m_right_value = 0.0;
-    VD m_obs_left;
-    VD m_obs_right;
-    
-    // construction function
-    SplitRes() : m_left_value(0.0), m_right_value(0.0) {}
-};
-
-struct ListData {
-    double m_x;
-    double m_y;
-    
-    ListData(double x, double y) : m_x(x), m_y(y) {}
-    
-    bool operator < (const ListData& str) const {
-        return (m_x < str.m_x);
+    double round(double data) const {
+        
+        return std::rint(data / m_Precision) * m_Precision;
     }
 };
-
-typedef enum _TerminalType {
-    AVERAGE, MAXIMAL
-}TerminalType;
-
-class RegressionTree {
-private:
-    // class members
-    int m_min_nodes;
-    int m_max_depth;
-    int m_current_depth;
-    TerminalType m_type;
+class KernelEstimator : public Estimator {
+    /** Vector containing all of the values seen */
+    std::vector<double> m_Values;
+    /** Vector containing the associated weights */
+    std::vector<double> m_Weights;
+    /** Number of values stored in m_Weights and m_Values so far */
+    int m_NumValues;
+    /** The sum of the weights so far */
+    double m_SumOfWeights;
+    /** The standard deviation */
+    double m_StandardDev;
+    /** The precision of data values */
+    double m_Precision;
+    /** Whether we can optimise the kernel summation */
+    bool m_AllWeightsOne;
+    /** Maximum percentage error permitted in probability calculations */
+    double MAX_ERROR = 0.01;
     
 public:
-    // The root node
-    Node *m_root = NULL;
-    // The features importance per index
-    VI features_importance;
-    
-    // construction function
-    RegressionTree() : m_min_nodes(10), m_max_depth(3), m_current_depth(0), m_type(AVERAGE) {}
-    
-    // set parameters
-    void setMinNodes(int min_nodes) {
-        Assert(min_nodes > 3, "The number of terminal nodes is too small: %i", min_nodes);
-        m_min_nodes = min_nodes;
+    KernelEstimator(double precision) {
+        
+        m_Values.resize(50, 0);
+        m_Weights.resize(50, 0);
+        
+        m_NumValues = 0;
+        m_SumOfWeights = 0;
+        m_AllWeightsOne = true;
+        m_Precision = precision;
+        // precision cannot be zero
+        if (m_Precision < SMALL) m_Precision = SMALL;
+        m_StandardDev = m_Precision / (2 * 3);
     }
-    
-    void setDepth(int depth) {
-        Assert(depth > 0, "Tree depth must be positive: %i", depth);
-        m_max_depth = depth;
-    }
-    
-    // get fit value
-    double predict(const VD &feature_x) const{
-        double re_res = 0.0;
+    void addValue(double data, double weight) {
         
-        if (!m_root) {
-            // failed in building the tree
-            return re_res;
+        if (weight == 0) {
+            return;
         }
-        
-        Node *current = m_root;
-        
-        while (true) {
-            // current node information
-            int c_feature_index = current->m_feature_index;
-            double c_node_value = current->m_node_value;
-            double c_node_left_value = current->m_terminal_left;
-            double c_node_right_value = current->m_terminal_right;
-            
-            if (feature_x[c_feature_index] < c_node_value) {
-                // we should consider left child
-                current = current->m_left_child;
-                
-                if (!current) {
-                    re_res = c_node_left_value;
-                    break;
-                }
-            } else {
-                // we should consider right child
-                current = current->m_right_child;
-                
-                if (!current) {
-                    re_res = c_node_right_value;
-                    break;
-                }
+        data = round(data);
+        int insertIndex = findNearestValue(data);
+        if ((m_NumValues <= insertIndex) || (m_Values[insertIndex] != data)) {
+            if (m_NumValues >= m_Values.size()) {
+                // resize
+                m_Values.resize(m_Values.size() * 2, 0);
+                m_Weights.resize(m_Values.size() * 2, 0);
             }
-        }
-        
-        return re_res;
-    }
-    
-    /*
-     *  The method to build regression tree
-     */
-    void buildRegressionTree(const VC<VD> &feature_x, const VD &obs_y) {
-        size_t samples_num = feature_x.size();
-        
-        Assert(samples_num == obs_y.size() && samples_num != 0,
-               "The number of samles does not match with the number of observations or the samples number is 0. Samples: %i", samples_num);
-        
-        Assert (m_min_nodes * 2 <= samples_num, "The number of samples is too small");
-        
-        size_t feature_dim = feature_x[0].size();
-        features_importance.resize((int)feature_dim, 0);
-        
-        // build the regression tree
-        buildTree(feature_x, obs_y);
-    }
-    
-private:
-    
-    /*
-     *  The following function gets the best split given the data
-     */
-    BestSplit findOptimalSplit(const VC<VD> &feature_x, const VD &obs_y) {
-        
-        BestSplit split_point;
-        
-        if (m_current_depth > m_max_depth) {
-            return split_point;
-        }
-        
-        size_t samples_num = feature_x.size();
-        
-        if (m_min_nodes * 2 > samples_num) {
-            // the number of observations in terminals is too small
-            return split_point;
-        }
-        size_t feature_dim = feature_x[0].size();
-        
-        
-        double min_err = 0;
-        int split_index = -1;
-        double node_value = 0.0;
-        
-        // begin to get the best split information
-        for (int loop_i = 0; loop_i < feature_dim; loop_i++){
-            // get the optimal split for the loop_index feature
+            m_Values.insert(m_Values.begin() + insertIndex, data);
+            m_Weights.insert(m_Weights.begin() + insertIndex, data);
+            m_NumValues++;
             
-            // get data sorted by the loop_i-th feature
-            VC<ListData> list_feature;
-            for (int loop_j = 0; loop_j < samples_num; loop_j++) {
-                list_feature.push_back(ListData(feature_x[loop_j][loop_i], obs_y[loop_j]));
+            if (weight != 1) {
+                m_AllWeightsOne = false;
             }
-            
-            // sort the list
-            sort(list_feature.begin(), list_feature.end());
-            
-            // begin to split
-            double sum_left = 0.0;
-            double mean_left = 0.0;
-            int count_left = 0;
-            double sum_right = 0.0;
-            double mean_right = 0.0;
-            int count_right = 0;
-            double current_node_value = 0;
-            double current_err = 0.0;
-            
-            // initialize left
-            for (int loop_j = 0; loop_j < m_min_nodes; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
-                sum_left += fetched_data.m_y;
-                count_left++;
-            }
-            mean_left = sum_left / count_left;
-            
-            // initialize right
-            for (int loop_j = m_min_nodes; loop_j < samples_num; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
-                sum_right += fetched_data.m_y;
-                count_right++;
-            }
-            mean_right = sum_right / count_right;
-            
-            // calculate the current error
-            // err = ||x_l - mean(x_l)||_2^2 + ||x_r - mean(x_r)||_2^2
-            // = ||x||_2^2 - left_count * mean(x_l)^2 - right_count * mean(x_r)^2
-            // = constant - left_count * mean(x_l)^2 - right_count * mean(x_r)^2
-            // Thus, we only need to check "- left_count * mean(x_l)^2 - right_count * mean(x_r)^2"
-            current_err = -1 * count_left * mean_left * mean_left - count_right * mean_right * mean_right;
-            
-            // current node value
-            current_node_value = (list_feature[m_min_nodes].m_x + list_feature[m_min_nodes - 1].m_x) / 2;
-            
-            if (current_err < min_err && current_node_value != list_feature[m_min_nodes - 1].m_x) {
-                split_index = loop_i;
-                node_value = current_node_value;
-                min_err = current_err;
-            }
-            
-            // begin to find the best split point for the feature
-            for (int loop_j = m_min_nodes; loop_j <= samples_num - m_min_nodes - 1; loop_j++) {
-                ListData fetched_data = list_feature[loop_j];
-                double y = fetched_data.m_y;
-                sum_left += y;
-                count_left++;
-                mean_left = sum_left / count_left;
-                
-                
-                sum_right -= y;
-                count_right--;
-                mean_right = sum_right / count_right;
-                
-                
-                current_err = -1 * count_left * mean_left * mean_left - count_right * mean_right * mean_right;
-                // current node value
-                current_node_value = (list_feature[loop_j + 1].m_x + fetched_data.m_x) / 2;
-                
-                if (current_err < min_err && current_node_value != fetched_data.m_x) {
-                    split_index = loop_i;
-                    node_value = current_node_value;
-                    min_err = current_err;
-                }
-                
-            }
-        }
-        // set the optimal split point
-        if (split_index == -1) {
-            // failed to split data
-            return split_point;
-        }
-        split_point.m_feature_index = split_index;
-        split_point.m_node_value = node_value;
-        split_point.m_status = true;
-        
-        return split_point;
-    }
-    
-    /*
-     *  Split data into the left node and the right node based on the best splitting
-     *  point.
-     */
-    SplitRes splitData(const VC<VD> &feature_x, const VD &obs_y, const BestSplit &best_split) {
-        
-        SplitRes split_res;
-        
-        int feature_index = best_split.m_feature_index;
-        double node_value = best_split.m_node_value;
-        
-        size_t samples_count = obs_y.size();
-        for (int loop_i = 0; loop_i < samples_count; loop_i++) {
-            VD ith_feature = feature_x[loop_i];
-            if (ith_feature[feature_index] < node_value) {
-                // append to the left feature
-                split_res.m_feature_left.push_back(ith_feature);
-                // observation
-                split_res.m_obs_left.push_back(obs_y[loop_i]);
-            } else {
-                // append to the right
-                split_res.m_feature_right.push_back(ith_feature);
-                split_res.m_obs_right.push_back(obs_y[loop_i]);
-            }
-        }
-        
-        // update terminal values
-        if (m_type == AVERAGE) {
-            double mean_value = 0.0;
-            for (double obsL : split_res.m_obs_left) {
-                mean_value += obsL;
-            }
-            mean_value = mean_value / split_res.m_obs_left.size();
-            split_res.m_left_value = mean_value;
-            
-            mean_value = 0.0;
-            for (double obsR : split_res.m_obs_right) {
-                mean_value += obsR;
-            }
-            mean_value = mean_value / split_res.m_obs_right.size();
-            split_res.m_right_value = mean_value;
-            
-        } else if (m_type == MAXIMAL) {
-            double max_value = 0.0;
-            VD::iterator iter = split_res.m_obs_left.begin();
-            if (++iter != split_res.m_obs_left.end()) {
-                max_value = *iter;
-            }
-            
-            while (++iter != split_res.m_obs_left.end()) {
-                double sel_value = *iter;
-                if (max_value < sel_value) {
-                    max_value = sel_value;
-                }
-            }
-            
-            split_res.m_left_value = max_value;
-            
-            
-            // right value
-            max_value = 0.0;
-            iter = split_res.m_obs_right.begin();
-            if (++iter != split_res.m_obs_right.end()) {
-                max_value = *iter;
-            }
-            
-            while (++iter != split_res.m_obs_right.end()) {
-                double sel_value = *iter;
-                if (max_value < sel_value) {
-                    max_value = sel_value;
-                }
-            }
-            
-            split_res.m_right_value = max_value;
-            
         } else {
-            // Unknown terminal type
-            assert(false);
+            m_Weights[insertIndex] += weight;
+            m_AllWeightsOne = false;
         }
+        m_SumOfWeights += weight;
+        double range = m_Values[m_NumValues - 1] - m_Values[0];
+        if (range > 0) {
+            m_StandardDev = std::max(range / std::sqrt(m_SumOfWeights),
+                                     // allow at most 3 sds within one interval
+                                     m_Precision / (2 * 3));
+        }
+    }
+    double getProbability(double data) const {
         
-        // return the result
-        return split_res;
+        double delta = 0, sum = 0, currentProb = 0;
+        double zLower = 0, zUpper = 0;
+        if (m_NumValues == 0) {
+            zLower = (data - (m_Precision / 2)) / m_StandardDev;
+            zUpper = (data + (m_Precision / 2)) / m_StandardDev;
+            return (normalProbability(zUpper) - normalProbability(zLower));
+        }
+        double weightSum = 0;
+        int start = findNearestValue(data);
+        for (int i = start; i < m_NumValues; i++) {
+            delta = m_Values[i] - data;
+            zLower = (delta - (m_Precision / 2)) / m_StandardDev;
+            zUpper = (delta + (m_Precision / 2)) / m_StandardDev;
+            currentProb = (normalProbability(zUpper) - normalProbability(zLower));
+            sum += currentProb * m_Weights[i];
+            weightSum += m_Weights[i];
+            if (currentProb * (m_SumOfWeights - weightSum) < sum * MAX_ERROR) {
+                break;
+            }
+        }
+        for (int i = start - 1; i >= 0; i--) {
+            delta = m_Values[i] - data;
+            zLower = (delta - (m_Precision / 2)) / m_StandardDev;
+            zUpper = (delta + (m_Precision / 2)) / m_StandardDev;
+            currentProb = (normalProbability(zUpper) - normalProbability(zLower));
+            sum += currentProb * m_Weights[i];
+            weightSum += m_Weights[i];
+            if (currentProb * (m_SumOfWeights - weightSum) < sum * MAX_ERROR) {
+                break;
+            }
+        }
+        double p = sum / m_SumOfWeights;
+        return p;
     }
     
-    /*
-     *  The following function builds a regression tree from data
-     */
-    Node* buildTree(const VC<VD> &feature_x, const VD &obs_y) {
-        
-        // obtain the optimal split point
-        m_current_depth = m_current_depth + 1;
-        
-        BestSplit best_split = findOptimalSplit(feature_x, obs_y);
-        
-        if (!best_split.m_status) {
-            if (m_current_depth > 0)
-                m_current_depth = m_current_depth - 1;
-            
-            return NULL;
+    
+private:
+    int findNearestValue(double key) const {
+        int low = 0;
+        int high = m_NumValues;
+        int middle = 0;
+        while (low < high) {
+            middle = (low + high) / 2;
+            double current = m_Values[middle];
+            if (current == key) {
+                return middle;
+            }
+            if (current > key) {
+                high = middle;
+            } else if (current < key) {
+                low = middle + 1;
+            }
         }
-        
-        // update feature importance info
-        features_importance[best_split.m_feature_index] += 1;
-        
-        // split the data
-        SplitRes split_data = splitData(feature_x, obs_y, best_split);
-        
-        // append current value to tree
-        Node *new_node = new Node(best_split.m_node_value, best_split.m_feature_index, split_data.m_left_value, split_data.m_right_value);
-        
-        if (!m_root) {
-            m_root = new_node;
-            m_current_depth = 0;
-            // append left and right side
-            m_root->m_left_child = buildTree(split_data.m_feature_left, split_data.m_obs_left); // left
-            m_root->m_right_child = buildTree(split_data.m_feature_right, split_data.m_obs_right); // right
+        return low;
+    }
+    double round(double data) {
+        return std::rint(data / m_Precision) * m_Precision;
+    }
+};
+class DiscreteEstimator : public Estimator {
+    /** Hold the counts */
+    std::vector<double> m_Counts;
+    /** Hold the sum of counts */
+    double m_SumOfCounts;
+    
+public:
+    DiscreteEstimator(int numSymbols, bool laplace) {
+        if (laplace) {
+            m_Counts.resize(numSymbols, 1);
+            m_SumOfCounts = (double)numSymbols;
         } else {
-            // append left and right side
-            new_node->m_left_child = buildTree(split_data.m_feature_left, split_data.m_obs_left); // left
-            new_node->m_right_child = buildTree(split_data.m_feature_right, split_data.m_obs_right); // right
+            m_Counts.resize(numSymbols, 0);
+            m_SumOfCounts = 0;
         }
-        if (m_current_depth > 0)
-            m_current_depth--;
-        
-        return new_node;
+    }
+    DiscreteEstimator(int nSymbols, double fPrior) {
+        m_Counts.resize(nSymbols, 0);
+        for(int iSymbol = 0; iSymbol < nSymbols; iSymbol++) {
+            m_Counts[iSymbol] = fPrior;
+        }
+        m_SumOfCounts = fPrior * (double) nSymbols;
+    }
+    void addValue(double data, double weight) {
+        if ((int)data < m_Counts.size()) {
+            m_Counts[(int)data] += weight;
+            m_SumOfCounts += weight;
+        }
+    }
+    double getProbability(double data) const {
+        if (m_SumOfCounts == 0) {
+            return 0;
+        }
+        double p = (double)m_Counts[(int)data] / m_SumOfCounts;
+        return p;
     }
 };
 
-class PredictionForest {
+class MahalanobisEstimator : public Estimator{
+    /** The inverse of the covariance matrix */
+    Matrix *m_CovarianceInverse;
+    /** The determinant of the covariance matrix */
+    double m_Determinant;
+    /** The difference between the conditioning value and the conditioning mean */
+    double m_ConstDelta;
+    /** The mean of the values */
+    double m_ValueMean;
+    
 public:
-    // class members
-    double m_init_value;
-    // the tree forest
-    VC<RegressionTree> m_trees;
-    // the learning rate
-    double m_combine_weight;
-    
-    // the OOB error value
-    double oob_error;
-    // the OOB samples size
-    int oob_samples_size;
-    
-    // construction function
-    PredictionForest(double learning_rate) : m_init_value(0.0), m_combine_weight(learning_rate) {}
-    
-    /**
-     * The method to make prediction for estimate of function's value from provided features
-     *
-     * @param feature_x the features to use for prediction
-     * @return the estimated function's value
-     */
-    double predict(const VD &feature_x) {
-        double re_res = m_init_value;
+    MahalanobisEstimator(const Matrix &covariance, const double constDelta, const double valueMean) {
+        Assert((covariance.rows() == 2) && (covariance.cols() == 2),
+               "Wrong covariance matrix dimensions! Rows: %lu, cols: %lu", covariance.rows(), covariance.cols());
+        m_CovarianceInverse = NULL;
         
-        if (m_trees.size() == 0) {
-            return re_res;
+        double a = covariance(0, 0);
+        double b = covariance(0, 1);
+        double c = covariance(1, 0);
+        double d = covariance(1, 1);
+        if (a == 0) {
+            a = c; c = 0;
+            double temp = b;
+            b = d; d = temp;
+        }
+        if (a == 0) {
+            return;
+        }
+        double denom = d - c * b / a;
+        if (denom == 0) {
+            return;
         }
         
-        for (int i = 0; i < m_trees.size(); i++) {
-            re_res += m_combine_weight * m_trees[i].predict(feature_x);
-        }
+        m_Determinant = covariance(0, 0) * covariance(1, 1) - covariance(1, 0) * covariance(0, 1);
+        m_CovarianceInverse = new Matrix(2, 2);
+        (*m_CovarianceInverse)(0, 0) = 1.0 / a + b * c / a / a / denom;
+        (*m_CovarianceInverse)(0, 1) = -b / a / denom;
+        (*m_CovarianceInverse)(1, 0) = -c / a / denom;
+        (*m_CovarianceInverse)(1, 1) = 1.0 / denom;
+        m_ConstDelta = constDelta;
+        m_ValueMean = valueMean;
         
-        return re_res;
     }
     
-    /**
-     * Calculates importance of each feature in input samples
-     */
-    VI featureImportances() {
-        VI importances;
-        for (int i = 0; i < m_trees.size(); i++) {
-            concatenate(importances, m_trees[i].features_importance);
-        }
-        return importances;
+    void addValue(double data, double weight) {
+        
     }
+
+    double getProbability(double data) const {
+        
+        double delta = data - m_ValueMean;
+        if (m_CovarianceInverse == NULL) {
+            return 0;
+        }
+        return normalKernel(delta);
+    }
+    
+private:
+    double normalKernel(double x) const {
+        Matrix thisPoint(1, 2);
+        thisPoint(0, 0) = x;
+        thisPoint(0, 1) = m_ConstDelta;
+        
+        thisPoint *= (*m_CovarianceInverse);
+        thisPoint *= thisPoint.transpose();
+        double val = exp(thisPoint(0, 0) / 2) / (sqrt(M_PI * 2) * m_Determinant);
+        
+//        exp(-thisPoint.times(m_CovarianceInverse).times(thisPoint.transpose()).get(0, 0)/ 2) / (sqrt(M_PI * 2) * m_Determinant);
+        return val;
+    }
+
 };
-
-
-class GradientBoostingMachine {
-    // class members
-    double m_sampling_size_ratio = 0.5;
-    double m_learning_rate = 0.01;
-    int m_tree_number = 100;
-    
-    // tree related parameters
-    int m_tree_min_nodes = 10;
-    int m_tree_depth = 3;
+class NNConditionalEstimator {
+    /** Vector containing all of the values seen */
+    VD m_Values;
+    /** Vector containing all of the conditioning values seen */
+    VD m_CondValues;
+    /** Vector containing the associated weights */
+    VD m_Weights;
+    /** The sum of the weights so far */
+    double m_SumOfWeights;
+    /** Current Conditional mean */
+    double m_CondMean;
+    /** Current Values mean */
+    double m_ValueMean;
+    /** Current covariance matrix */
+    Matrix *m_Covariance;
+    /** Whether we can optimise the kernel summation */
+    bool m_AllWeightsOne = true;
     
 public:
-    
-    GradientBoostingMachine(double sample_size_ratio, double learning_rate,
-                            int tree_number, int tree_min_nodes, int tree_depth) :
-    m_sampling_size_ratio(sample_size_ratio), m_learning_rate(learning_rate), m_tree_number(tree_number),
-    m_tree_min_nodes(tree_min_nodes), m_tree_depth(tree_depth) {
-        // Check the validity of numbers
-        Assert(sample_size_ratio > 0 && learning_rate > 0 && tree_number > 0 && tree_min_nodes >= 3 && tree_depth > 0,
-               "Wrong parameters");
-    }
-    
-    /**
-     * Fits a regression function using the Gradient Boosting Tree method.
-     * On success, return function; otherwise, return null.
-     *
-     * @param input_x the input features
-     * @param input_y the ground truth values - one per features row
-     */
-    PredictionForest *train(const VC<VD> &input_x, const VD &input_y) {
+    void addValue(double data, double given, double weight) {
         
-        // initialize forest
-        PredictionForest *res_fun = new PredictionForest(m_learning_rate);
-        
-        // get the samples number
-        size_t samples_num = input_y.size();
-        
-        Assert(samples_num == input_x.size() && samples_num > 0,
-               "Error: The input_x size should not be zero and should match the size of input_y");
-        
-        // holds indices of training data samples used for trees training
-        // this will be used later for OOB error calculation
-        VI used_indices(samples_num, -1);
-        
-        // get an initial guess of the function
-        double mean_y = 0.0;
-        for (double d : input_y) {
-            mean_y += d;
-        }
-        mean_y = mean_y / samples_num;
-        res_fun->m_init_value = mean_y;
+        size_t insertIndex = findNearestPair(given, data);
         
         
-        // prepare the iteration
-        VD h_value(samples_num);
-        // initialize h_value
-        int index = 0;
-        while (index < samples_num) {
-            h_value[index] = mean_y;
-            index += 1;
-        }
-        
-        // begin the boosting process
-        int iter_index = 0;
-        while (iter_index < m_tree_number) {
-            
-            // calculate the gradient
-            VD gradient;
-            index = 0;
-            for (double d : input_y) {
-                gradient.push_back(d - h_value[index]);
-                
-                // next
-                index++;
-            }
-            
-            // begin to sample
-            if (m_sampling_size_ratio < 0.99) {
-                // sample without replacement
-                
-                // we need to sample
-                RandomSample sampler((int)samples_num, (int) (m_sampling_size_ratio * samples_num));
-                
-                // get random index
-                VI sampled_index = sampler.get_sample_index();
-                
-                // data for growing trees
-                VC<VD> train_x;
-                VD train_y;
-                
-                for (int sel_index : sampled_index) {
-                    // assign value
-                    train_y.push_back(gradient[sel_index]);
-                    train_x.push_back(input_x[sel_index]);
-                    
-                    // mark index as used
-                    used_indices[sel_index] = 1;
+        if ((m_Values.size() <= insertIndex) || (m_CondValues[insertIndex] != given) || (m_Values[insertIndex] != data)) {
+                m_CondValues.insert(m_CondValues.begin() + insertIndex, given);
+                m_Values.insert(m_Values.begin() + insertIndex, data);
+                m_Weights.insert(m_Weights.begin() + insertIndex, weight);
+                if (weight != 1) {
+                    m_AllWeightsOne = false;
                 }
-                
-                // fit a regression tree
-                RegressionTree tree;
-                
-                if (m_tree_depth > 0) {
-                    tree.setDepth(m_tree_depth);
-                }
-                
-                if (m_tree_min_nodes > 0) {
-                    tree.setMinNodes(m_tree_min_nodes);
-                }
-                
-                tree.buildRegressionTree(train_x, train_y);
-                
-                // store tree information
-                if (tree.m_root == NULL) {
-                    // clear buffer
-                    train_x.clear();
-                    train_y.clear();
-                    continue;
-                }
-                
-                res_fun->m_trees.push_back(tree);
-                
-                // update h_value information, prepare for the next iteration
-                int sel_index = 0;
-                while (sel_index < samples_num) {
-                    h_value[sel_index] += m_learning_rate * tree.predict(input_x[sel_index]);
-                    sel_index++;
-                }
-                
             } else {
-                // use all data
-                // fit a regression tree
-                RegressionTree tree;
-                
-                // set parameters if needed
-                if (m_tree_depth > 0) {
-                    tree.setDepth(m_tree_depth);
-                }
-                
-                if (m_tree_min_nodes > 0) {
-                    tree.setMinNodes(m_tree_min_nodes);
-                }
-                
-                tree.buildRegressionTree(input_x, gradient);
-                
-                if (tree.m_root == NULL) {
-                    // cannot update any more
-                    break;
-                }
-                // store tree information
-                res_fun->m_trees.push_back(tree);
-                
-                // update h_value information, prepare for the next iteration
-                for (int loop_index = 0; loop_index < samples_num; loop_index++) {
-                    h_value[loop_index] += m_learning_rate * tree.predict(input_x[loop_index]);
-                }
+                double newWeight = m_Weights[insertIndex];
+                newWeight += weight;
+                m_Weights[insertIndex] = newWeight;
+                m_AllWeightsOne = false;      
             }
-            
-            // next iteration
-            iter_index++;
-        }
+        m_SumOfWeights += weight;
         
-        // find OOB error
-        VI oob_data;
-        int i, sel_index;
-        for (i = 0; i < samples_num; i++) {
-            if (used_indices[i] < 0) {
-                oob_data.push_back(i);
-            }
-        }
-        double oob_error = 0.0, test_y;
-        for (i = 0; i < oob_data.size(); i++) {
-            sel_index = oob_data[i];
-            test_y = res_fun->predict(input_x[sel_index]);
-            oob_error += (input_y[sel_index] - test_y) * (input_y[sel_index] - test_y);
-        }
-        oob_error /= oob_data.size();
-        
-        // store OOB
-        res_fun->oob_error = oob_error;
-        res_fun->oob_samples_size = (int)oob_data.size();
-        
-        return res_fun;
+        // Invalidate any previously calculated covariance matrix
+        delete m_Covariance;
+        m_Covariance = NULL;
     }
     
-    PredictionForest *learnGradientBoostingRanker(const VC<VD> &input_x, const VC<VD> &input_y, const double tau) {
-        PredictionForest *res_fun = new PredictionForest(m_learning_rate);
-        
-        size_t feature_num = input_x.size();
-        
-        Assert(feature_num == input_y.size() && feature_num > 0,
-               "The size of input_x should be the same as the size of input_y");
-        
-        VD h_value_x(feature_num, 0);
-        VD h_value_y(feature_num, 0);
-        
-        int iter_index = 0;
-        while (iter_index < m_tree_number) {
-            
-            // in the boosting ranker, randomly select half samples without replacement in each iteration
-            RandomSample sampler((int)feature_num, (int) (0.5 * feature_num));
-            
-            // get random index
-            VI sampled_index = sampler.get_sample_index();
-            
-            VC<VD> gradient_x;
-            VD gradient_y;
-            
-            for (int i = 0; i < sampled_index.size(); i++) {
-                int sel_index = sampled_index[i];
-                
-                gradient_x.push_back(input_x[sel_index]);
-                gradient_x.push_back(input_y[sel_index]);
-                
-                // get sample data
-                if (h_value_x[sel_index] < h_value_y[sel_index] + tau) {
-                    double neg_gradient = h_value_y[sel_index] + tau - h_value_x[sel_index];
-                    gradient_y.push_back(neg_gradient);
-                    gradient_y.push_back(-1 * neg_gradient);
-                } else {
-                    gradient_y.push_back(0.0);
-                    gradient_y.push_back(0.0);
+    double getProbability(double data, double given) {
+        if (m_Covariance == NULL) {
+            calculateCovariance();
+        }
+        MahalanobisEstimator estimator(*m_Covariance, given - m_CondMean, m_ValueMean);
+        return estimator.getProbability(data);
+    }
+    
+private:
+    size_t findNearestPair(double key, double secondaryKey) {
+        size_t low = 0;
+        size_t high = m_CondValues.size();
+        size_t middle = 0;
+        while (low < high) {
+            middle = (low + high) / 2;
+            double current = m_CondValues[middle];
+            if (current == key) {
+                double secondary = m_Values[middle];
+                if (secondary == secondaryKey) {
+                    return middle;
                 }
-                //                cerr << "sel_index: " << sel_index << endl;
-            }
-            
-            // fit a regression tree
-            RegressionTree tree;
-            //            tree.m_type = MAXIMAL;
-            
-            tree.buildRegressionTree(gradient_x, gradient_y);
-            
-            // store tree information
-            if (tree.m_root == NULL) {
-                continue;
-            }
-            
-            // update information
-            res_fun->m_trees.push_back(tree);
-            
-            double err = 0.0;
-            
-            for (int loop_index = 0; loop_index < feature_num; loop_index++) {
-                h_value_x[loop_index] += m_learning_rate * tree.predict(input_x[loop_index]);
-                h_value_y[loop_index] += m_learning_rate * tree.predict(input_y[loop_index]);
-                
-                if (h_value_x[loop_index] < h_value_y[loop_index] + tau) {
-                    err += (h_value_x[loop_index] - h_value_y[loop_index] - tau) *
-                    (h_value_x[loop_index] - h_value_y[loop_index] - tau);
+                if (secondary > secondaryKey) {
+                    high = middle;
+                } else if (secondary < secondaryKey) {
+                    low = middle + 1;
                 }
             }
-            //            if (LOG_DEBUG) cerr << iter_index + 1 << "-th iteration with error " << err << endl;
+            if (current > key) {
+                high = middle;
+            } else if (current < key) {
+                low = middle + 1;
+            }
+        }
+        return low;
+    }
+    
+    void calculateCovariance() {
+        double sumValues = 0, sumConds = 0;
+        for(int i = 0; i < m_Values.size(); i++) {
+            sumValues += m_Values[i] * m_Weights[i];
+            sumConds += m_CondValues[i] * m_Weights[i];
+        }
+        m_ValueMean = sumValues / m_SumOfWeights;
+        m_CondMean = sumConds / m_SumOfWeights;
+        double c00 = 0, c01 = 0, c10 = 0, c11 = 0;
+        for(int i = 0; i < m_Values.size(); i++) {
+            double x = m_Values[i];
+            double y = m_CondValues[i];
+            double weight = m_Weights[i];
             
-            iter_index += 1;
+            Printf("x: %f, y: %f, weight: %f\n", x, y, weight);
+            c00 += (x - m_ValueMean) * (x - m_ValueMean) * weight;
+            c01 += (x - m_ValueMean) * (y - m_CondMean) * weight;
+            c11 += (y - m_CondMean) * (y - m_CondMean) * weight;
+        }
+        c00 /= (m_SumOfWeights - 1.0);
+        c01 /= (m_SumOfWeights - 1.0);
+        c10 = c01;
+        c11 /= (m_SumOfWeights - 1.0);
+        m_Covariance = new Matrix(2, 2);
+        (*m_Covariance)(0, 0) = c00;
+        (*m_Covariance)(0, 1) = c01;
+        (*m_Covariance)(1, 0) = c10;
+        (*m_Covariance)(1, 1) = c11;
+    }
+};
+
+class WeightSearchEstimator {
+    // the search lenght
+    int searchLengthFactor;
+    VD funct;
+   
+public:
+    WeightSearchEstimator(const int searchLengthFactor) : searchLengthFactor(searchLengthFactor){}
+    
+    void addValues(VI &vals) {
+        int maxDistance = 0;
+        size_t count = vals.size();
+        funct.resize(count, 0);
+        int prevIndex = 0;
+        int distance = 0;
+        // find max distance between values
+        for (int i = 0; i < count; i++) {
+            if (vals[i] > 0) {
+                distance = i - prevIndex;
+                prevIndex = i;
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                }
+            }
+        }
+        maxDistance /= searchLengthFactor;
+        prevIndex = 0;
+        int prevValue = 0, nextValue = 0, nextIndex = 0, distLeft = 0, distRight = 0;
+        double leftWeight, rightWeight;
+        for (int i = 0; i < count; i++) {
+            if (vals[i] > 0) {
+                prevIndex = i;
+                funct[i] = vals[i];
+            } else {
+                // find aproximated value
+                distLeft = i - prevIndex;
+                if (nextIndex <= i) {
+                    for (int j = i; j < i + maxDistance; j++) {
+                        nextIndex = j;
+                        nextValue = vals[j];
+                        if (nextValue > 0) {
+                            break;
+                        }
+                    }
+                }
+                distRight = nextIndex - i;
+                leftWeight = (double)distLeft / (distLeft + distRight);
+                rightWeight = (double)distRight /  (distLeft + distRight);
+                funct[i] = (prevValue * leftWeight + nextValue * rightWeight) / 2.0;
+            }
         }
         
-        
-        
-        return res_fun;
+        print(funct);
+    }
+    
+    double getProbability(double data) const {
+        int index = data;
+        if (index >= funct.size() || index < 0) {
+            Printf("Value is out of range: %f", data);
+            return 0;
+        }
+        double p = funct[index];
+        return p;
     }
 };
 
 //
-// -----------------------------------------
+// ----------------------------
 //
+
 struct Entry {
     int route_id;
     int source;
@@ -1851,7 +1330,7 @@ Estimator *visibilityEstimator = new KernelEstimator(.1);
 Estimator *pilotHoursPrevEstimator = new KernelEstimator(.2);
 Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.2);
 
-//Estimator *rankEstimator = new NormalEstimator(.00001);//new KernelEstimator(.001);//
+Estimator *rankEstimator = new NormalEstimator(.00001);//new KernelEstimator(.001);//
 
 #define FORE(i, a, b, c) for (int i = (a); i < (b).size(); i++) (c)->addValue(i, (b)[i]);
 
@@ -1937,7 +1416,7 @@ inline double calcCongestionFactor(const Entry &e) {
         return 0;
 }
 
-double feat_weigths[] = {100, 10000, 10, 100, 1, 10, 1, 1, 100, 10, 100, 100, 10000, 10000, 100, 1, 100, 100, 1, 1, 100, 10, 100, 100, 100, 100, 100, 100};
+double feat_weigths[] = {100, 1000, 10, 100, 1, 10, 1, 1, 100, 10, 100, 100, 10000, 10000, 10, 1, 100, 100, 1, 1, 100, 10, 100, 100, 100, 100, 100, 100};
 
 
 double collectFeatures(VD &feats) {
@@ -1988,7 +1467,7 @@ void createEntryFeatures(const Entry &e, const bool train, VD &feats) {
         
         
         
-//        rankEstimator->addValue(val, e.evt_cnt);
+        //        rankEstimator->addValue(val, e.evt_cnt);
     }
 }
 
@@ -2357,9 +1836,6 @@ public:
 #ifdef USE_ESTIMATORS
         rank(trainM, trainEntries, testM, testEntries);
 #endif
-#ifdef USE_REGERESSION
-        rank(trainM, trainEntries, testM, testEntries);
-#endif
         
         sort(testEntries.rbegin(), testEntries.rend(), sortByPrediction);
         for (int i = 0; i < Y; i++) {
@@ -2381,25 +1857,25 @@ private:
         cerr << "=========== Rank by Estimators ===========" << endl;
         
         double startTime = getTime();
-        NormalEstimator estimator(1);
-//        DiscreteEstimator estimator(rankFreq.size() + 1, false);
-        FORE(i, 0, rankFreq, &estimator);
+        size_t freqSize = rankFreq.size();
+        
+        Estimator *estimator = new NormalEstimator(1);
+        FORE(i, 0, rankFreq, estimator);
+
+//        WeightSearchEstimator *estimator = new WeightSearchEstimator(1000);
+//        estimator->addValues(rankFreq);
+
         
         // predict
         for (int i = 0; i < Y; i++) {
             double val = collectFeatures(testM[i]);
             
             
-            if (val > 100000) {
-                testEntries[i].predicted = 4;
-            } else if (val > 50000) {
-                testEntries[i].predicted = 3;
-            } else if (val > 10000) {
+            if (val > 10000) { // 10000 - is the optimum
+                Printf("val: %f ", val);
                 testEntries[i].predicted = 2;
-//            } else if (val > 9000) {
-//                testEntries[i].predicted = 1;
             } else {
-                testEntries[i].predicted = estimator.getProbability(val);
+                testEntries[i].predicted = estimator->getProbability(val);
             }
             
             Printf("Id: %i, events: %f, val: %f\n", i, testEntries[i].predicted, val);
@@ -2408,43 +1884,6 @@ private:
         double finishTime = getTime();
         
         Printf("Rank time: %f\n", finishTime - startTime);
-    }
-#endif
-#ifdef USE_REGERESSION
-    void rank(const Matrix &trainM, const VE &trainEntries,  Matrix &testM, VE &testEntries) {
-        cerr << "=========== Rank by GBT regression ===========" << endl;
-        
-        double startTime = getTime();
-        // do pass
-        
-        //----------------------------------------------------
-        GBTConfig conf;
-        conf.sampling_size_ratio = 0.5;
-        conf.learning_rate = 0.01;
-        conf.tree_min_nodes = 10;
-        conf.tree_depth = 3;
-        conf.tree_number = 22;
-        
-        //----------------------------------------------------
-        
-        VVD input_x = trainM.A;
-        VD input_y;
-        trainM.columnToArray(featNum, input_y);
-        
-        // train
-        GradientBoostingMachine tree(conf.sampling_size_ratio, conf.learning_rate, conf.tree_number, conf.tree_min_nodes, conf.tree_depth);
-        PredictionForest *predictor = tree.train(input_x, input_y);
-        
-        double rankTime = getTime();
-        
-        // predict
-        for (int i = 0; i < Y; i++) {
-            testEntries[i].predicted = predictor->predict(testM[i]);
-            Printf("Id: %i, events: %f\n", i, testEntries[i].predicted);
-        }
-        double finishTime = getTime();
-        
-        Printf("Rank time: %f, full time: %f\n", rankTime - startTime, finishTime - startTime);
     }
 #endif
 };

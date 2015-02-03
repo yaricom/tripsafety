@@ -10,6 +10,7 @@
 #define TripSafety_estimators_h
 
 #include "statistics.h"
+#include "matrix.h"
 
 /** The small deviation allowed in double comparisons. */
 const static double SMALL = 1e-6;
@@ -436,6 +437,189 @@ public:
         }
         double p = (double)m_Counts[(int)data] / m_SumOfCounts;
         return p;
+    }
+};
+
+class MahalanobisEstimator : public Estimator{
+    /** The inverse of the covariance matrix */
+    Matrix *m_CovarianceInverse;
+    /** The determinant of the covariance matrix */
+    double m_Determinant;
+    /** The difference between the conditioning value and the conditioning mean */
+    double m_ConstDelta;
+    /** The mean of the values */
+    double m_ValueMean;
+    
+public:
+    MahalanobisEstimator(const Matrix &covariance, const double constDelta, const double valueMean) {
+        Assert((covariance.rows() == 2) && (covariance.cols() == 2),
+               "Wrong covariance matrix dimensions! Rows: %lu, cols: %lu", covariance.rows(), covariance.cols());
+        m_CovarianceInverse = NULL;
+        
+        double a = covariance(0, 0);
+        double b = covariance(0, 1);
+        double c = covariance(1, 0);
+        double d = covariance(1, 1);
+        if (a == 0) {
+            a = c; c = 0;
+            double temp = b;
+            b = d; d = temp;
+        }
+        if (a == 0) {
+            return;
+        }
+        double denom = d - c * b / a;
+        if (denom == 0) {
+            return;
+        }
+        
+        m_Determinant = covariance(0, 0) * covariance(1, 1) - covariance(1, 0) * covariance(0, 1);
+        m_CovarianceInverse = new Matrix(2, 2);
+        (*m_CovarianceInverse)(0, 0) = 1.0 / a + b * c / a / a / denom;
+        (*m_CovarianceInverse)(0, 1) = -b / a / denom;
+        (*m_CovarianceInverse)(1, 0) = -c / a / denom;
+        (*m_CovarianceInverse)(1, 1) = 1.0 / denom;
+        m_ConstDelta = constDelta;
+        m_ValueMean = valueMean;
+        
+    }
+    
+    void addValue(double data, double weight) {
+        
+    }
+    
+    double getProbability(double data) const {
+        
+        double delta = data - m_ValueMean;
+        if (m_CovarianceInverse == NULL) {
+            return 0;
+        }
+        return normalKernel(delta);
+    }
+    
+private:
+    double normalKernel(double x) const {
+        Matrix thisPoint(1, 2);
+        thisPoint(0, 0) = x;
+        thisPoint(0, 1) = m_ConstDelta;
+        
+        thisPoint *= (*m_CovarianceInverse);
+        thisPoint *= thisPoint.transpose();
+        double val = exp(thisPoint(0, 0) / 2) / (sqrt(M_PI * 2) * m_Determinant);
+        
+        //        exp(-thisPoint.times(m_CovarianceInverse).times(thisPoint.transpose()).get(0, 0)/ 2) / (sqrt(M_PI * 2) * m_Determinant);
+        return val;
+    }
+    
+};
+class NNConditionalEstimator {
+    /** Vector containing all of the values seen */
+    VD m_Values;
+    /** Vector containing all of the conditioning values seen */
+    VD m_CondValues;
+    /** Vector containing the associated weights */
+    VD m_Weights;
+    /** The sum of the weights so far */
+    double m_SumOfWeights;
+    /** Current Conditional mean */
+    double m_CondMean;
+    /** Current Values mean */
+    double m_ValueMean;
+    /** Current covariance matrix */
+    Matrix *m_Covariance;
+    /** Whether we can optimise the kernel summation */
+    bool m_AllWeightsOne = true;
+    
+public:
+    void addValue(double data, double given, double weight) {
+        
+        size_t insertIndex = findNearestPair(given, data);
+        
+        
+        if ((m_Values.size() <= insertIndex) || (m_CondValues[insertIndex] != given) || (m_Values[insertIndex] != data)) {
+            m_CondValues.insert(m_CondValues.begin() + insertIndex, given);
+            m_Values.insert(m_Values.begin() + insertIndex, data);
+            m_Weights.insert(m_Weights.begin() + insertIndex, weight);
+            if (weight != 1) {
+                m_AllWeightsOne = false;
+            }
+        } else {
+            double newWeight = m_Weights[insertIndex];
+            newWeight += weight;
+            m_Weights[insertIndex] = newWeight;
+            m_AllWeightsOne = false;
+        }
+        m_SumOfWeights += weight;
+        
+        // Invalidate any previously calculated covariance matrix
+        delete m_Covariance;
+        m_Covariance = NULL;
+    }
+    
+    double getProbability(double data, double given) {
+        if (m_Covariance == NULL) {
+            calculateCovariance();
+        }
+        MahalanobisEstimator estimator(*m_Covariance, given - m_CondMean, m_ValueMean);
+        return estimator.getProbability(data);
+    }
+    
+private:
+    size_t findNearestPair(double key, double secondaryKey) {
+        size_t low = 0;
+        size_t high = m_CondValues.size();
+        size_t middle = 0;
+        while (low < high) {
+            middle = (low + high) / 2;
+            double current = m_CondValues[middle];
+            if (current == key) {
+                double secondary = m_Values[middle];
+                if (secondary == secondaryKey) {
+                    return middle;
+                }
+                if (secondary > secondaryKey) {
+                    high = middle;
+                } else if (secondary < secondaryKey) {
+                    low = middle + 1;
+                }
+            }
+            if (current > key) {
+                high = middle;
+            } else if (current < key) {
+                low = middle + 1;
+            }
+        }
+        return low;
+    }
+    
+    void calculateCovariance() {
+        double sumValues = 0, sumConds = 0;
+        for(int i = 0; i < m_Values.size(); i++) {
+            sumValues += m_Values[i] * m_Weights[i];
+            sumConds += m_CondValues[i] * m_Weights[i];
+        }
+        m_ValueMean = sumValues / m_SumOfWeights;
+        m_CondMean = sumConds / m_SumOfWeights;
+        double c00 = 0, c01 = 0, c10 = 0, c11 = 0;
+        for(int i = 0; i < m_Values.size(); i++) {
+            double x = m_Values[i];
+            double y = m_CondValues[i];
+            double weight = m_Weights[i];
+            
+            Printf("x: %f, y: %f, weight: %f\n", x, y, weight);
+            c00 += (x - m_ValueMean) * (x - m_ValueMean) * weight;
+            c01 += (x - m_ValueMean) * (y - m_CondMean) * weight;
+            c11 += (y - m_CondMean) * (y - m_CondMean) * weight;
+        }
+        c00 /= (m_SumOfWeights - 1.0);
+        c01 /= (m_SumOfWeights - 1.0);
+        c10 = c01;
+        c11 /= (m_SumOfWeights - 1.0);
+        m_Covariance = new Matrix(2, 2);
+        (*m_Covariance)(0, 0) = c00;
+        (*m_Covariance)(0, 1) = c01;
+        (*m_Covariance)(1, 0) = c10;
+        (*m_Covariance)(1, 1) = c11;
     }
 };
 
