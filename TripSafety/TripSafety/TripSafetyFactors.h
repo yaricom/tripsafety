@@ -2381,8 +2381,9 @@ private:
         cerr << "=========== Rank by Estimators ===========" << endl;
         
         double startTime = getTime();
-        NormalEstimator rankEstimator(1);
-        FORE(i, 0, rankFreq, &rankEstimator);
+        NormalEstimator estimator(1);
+//        DiscreteEstimator estimator(rankFreq.size() + 1, false);
+        FORE(i, 0, rankFreq, &estimator);
         
         // predict
         for (int i = 0; i < Y; i++) {
@@ -2398,7 +2399,7 @@ private:
 //            } else if (val > 9000) {
 //                testEntries[i].predicted = 1;
             } else {
-                testEntries[i].predicted = rankEstimator.getProbability(val);
+                testEntries[i].predicted = estimator.getProbability(val);
             }
             
             Printf("Id: %i, events: %f, val: %f\n", i, testEntries[i].predicted, val);
