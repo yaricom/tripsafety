@@ -887,7 +887,7 @@ private:
 };
 class DiscreteEstimator : public Estimator {
     /** Hold the counts */
-    std::vector<double> m_Counts;
+    VD m_Counts;
     /** Hold the sum of counts */
     double m_SumOfCounts;
     
@@ -918,7 +918,11 @@ public:
         if (m_SumOfCounts == 0) {
             return 0;
         }
-        double p = (double)m_Counts[(int)data] / m_SumOfCounts;
+        int index = data;
+        if (index > m_Counts.size()) {
+            return 0;
+        }
+        double p = (double)m_Counts[index] / m_SumOfCounts;
         return p;
     }
 };
@@ -1232,48 +1236,78 @@ struct Entry {
     int risk_rank;
 };
 void printEntry(const Entry & e) {
-    Printf("route_id: %i, source: %i, dist: %i, cycles: %i, complexity: %i, cargo: %i, stops: %i, start_day: %i, start_month: %i, start_day_of_month: %i, start_day_of_week: %i, start_time: %s, days: %.2f, pilot: %i, pilot2: %i, pilot_exp: %i, pilot_visits_prev: %i, pilot_hours_prev: %.2f, pilot_duty_hrs_prev: .2f, pilot_dist_prev:.2f, route_risk_1:%i, route_risk_2:%i, weather:%i, visibility:.2f, traf: %i|%i|%i|%i|%i, evt: %i|%i|%i|%i|%i",
+    Printf("route_id: %i, source: %i, dist: %i, cycles: %i, complexity: %i, cargo: %i, stops: %i, start_day: %i, start_month: %i, start_day_of_month: %i, start_day_of_week: %i, start_time: %s, days: %.2f, pilot: %i, pilot2: %i, pilot_exp: %i, pilot_visits_prev: %i, pilot_hours_prev: %.2f, pilot_duty_hrs_prev: %.2f, pilot_dist_prev:%.2f, route_risk_1:%i, route_risk_2:%i, weather:%i, visibility:.2f, traf: %i|%i|%i|%i|%i, evt: %i|%i|%i|%i|%i",
            e.route_id, e.source, e.dist, e.cycles, e.complexity, e.cargo, e.stops, e.start_day, e.start_month, e.start_day_of_month, e.start_day_of_week, e.start_time.c_str(), e.days, e.pilot, e.pilot2, e.pilot_exp, e.pilot_visits_prev, e.pilot_hours_prev, e.pilot_duty_hrs_prev, e.pilot_dist_prev, e.route_risk_1, e.route_risk_2, e.weather, e.visibility, e.traf0, e.traf1, e.traf2, e.traf3, e.traf4, e.accel_cnt, e.decel_cnt, e.speed_cnt, e.stability_cnt, e.evt_cnt);
 }
 
-VI sourceFreq;
-VI distFreq;
-VI cyclesFreq;
-VI complexityFreq;
-VI cargoFreq;
-VI stopsFreq;
-VI start_dayFreq;
-VI start_monthFreq;
-VI start_day_of_monthFreq;
-VI start_day_of_weekFreq;
-VI start_timeFreq;
-VI pilotFreq;
-VI pilot2Freq;
-
-VI pilot_expFreq;
-VI pilot_visits_prevFreq;
-
-VI pilot_dist_prevFreq;
-
-VI route_risk_1Freq;
-VI route_risk_2Freq;
-VI weatherFreq;
-
-VI traf0Freq;
-VI traf1Freq;
-VI traf2Freq;
-VI traf3Freq;
-VI traf4Freq;
-
-VI eventsFreq;
-
-VI rankFreq;
-
-inline void collectFrequency(VI &frequencies, const int index, const int value) {
-    if (index >= frequencies.size()) {
-        frequencies.resize(index + 1, 0);
+class FreqEstimator : public Estimator {
+    /** Hold the counts */
+    VD m_Counts;
+    /** Hold the sum of counts */
+    double m_SumOfCounts;
+    
+public:
+    void addValue(double data, double weight) {
+        int index = (int)data;
+        if (index >= m_Counts.size()) {
+            m_Counts.resize(index + 1, 0);
+        }
+        m_Counts[index] += weight;
+        m_SumOfCounts += weight;
     }
-    frequencies[index] += value;
+    double getProbability(double data) const {
+        if (m_SumOfCounts == 0) {
+            return 0;
+        }
+        int index = (int)data;
+        if (index > m_Counts.size()) {
+            return 0;
+        }
+//        double p = (double)m_Counts[index] / m_SumOfCounts;
+        double p = (double)m_Counts[index];
+        return p;
+    }
+    
+    size_t size() const{
+        return m_Counts.size();
+    }
+};
+
+FreqEstimator sourceFreq;
+FreqEstimator distFreq;
+FreqEstimator cyclesFreq;
+FreqEstimator complexityFreq;
+FreqEstimator cargoFreq;
+FreqEstimator stopsFreq;
+FreqEstimator start_dayFreq;
+FreqEstimator start_monthFreq;
+FreqEstimator start_day_of_monthFreq;
+FreqEstimator start_day_of_weekFreq;
+FreqEstimator start_timeFreq;
+FreqEstimator pilotFreq;
+FreqEstimator pilot2Freq;
+
+FreqEstimator pilot_expFreq;
+FreqEstimator pilot_visits_prevFreq;
+
+FreqEstimator pilot_dist_prevFreq;
+
+FreqEstimator route_risk_1Freq;
+FreqEstimator route_risk_2Freq;
+FreqEstimator weatherFreq;
+
+FreqEstimator traf0Freq;
+FreqEstimator traf1Freq;
+FreqEstimator traf2Freq;
+FreqEstimator traf3Freq;
+FreqEstimator traf4Freq;
+
+FreqEstimator eventsFreq;
+
+FreqEstimator rankFreq;
+
+inline void collectFrequency(FreqEstimator &est, const int index, const int value) {
+    est.addValue(index, value);
 }
 
 inline int extractTimeRange(const Entry &e) {
@@ -1281,11 +1315,11 @@ inline int extractTimeRange(const Entry &e) {
 }
 
 inline int extractDistanceRange(const Entry &e) {
-    return e.dist;// / 5 + 1;
+    return e.dist / 20 + 1;
 }
 
 inline int extractDistancePrevRange(const Entry &e) {
-    return e.pilot_dist_prev / 100 + 1;
+    return e.pilot_dist_prev / 20 + 1;
 }
 
 inline int extractRouteRisk1(const Entry &e) {
@@ -1326,43 +1360,43 @@ Estimator *traf3Estimator;
 Estimator *traf4Estimator;
 
 Estimator *daysEstimator = new KernelEstimator(.1);
-Estimator *visibilityEstimator = new KernelEstimator(.1);
-Estimator *pilotHoursPrevEstimator = new KernelEstimator(.2);
-Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.2);
+Estimator *visibilityEstimator = new NormalEstimator(.01);
+Estimator *pilotHoursPrevEstimator = new KernelEstimator(.01);
+Estimator *pilotDutyHoursPrevEstimator = new KernelEstimator(.01);
 
-Estimator *rankEstimator = new NormalEstimator(.00001);//new KernelEstimator(.001);//
+Estimator *rankEstimator = new NormalEstimator(.00001);
 
-#define FORE(i, a, b, c) for (int i = (a); i < (b).size(); i++) (c)->addValue(i, (b)[i]);
+#define FORE(i, a, b, c) for (int i = (a); i < (b).size(); i++) (c)->addValue(i, (b).getProbability(i));
 
 void initFreqEstimators() {
-    sourceEstimator = new KernelEstimator(5);
+    sourceEstimator = new DiscreteEstimator((int)sourceFreq.size(), false);
     FORE(i, 0, sourceFreq, sourceEstimator);
     
-    distanceEstimator = new KernelEstimator(1);
+    distanceEstimator = new DiscreteEstimator((int)distFreq.size(), false);
     FORE(i, 0, distFreq, distanceEstimator);
     
-    cyclesEstimator = new PoissonEstimator();//new DiscreteEstimator((int)cyclesFreq.size(), false);
+    cyclesEstimator = new PoissonEstimator();
     FORE(i, 1, cyclesFreq, cyclesEstimator);
     
-    complexityEstimator = new KernelEstimator(1);//new DiscreteEstimator((int)complexityFreq.size(), false);
+    complexityEstimator = new DiscreteEstimator((int)complexityFreq.size(), false);
     FORE(i, 0, complexityFreq, complexityEstimator);
     
-    cargoEstimator = new PoissonEstimator();//new DiscreteEstimator((int)cargoFreq.size(), false);
+    cargoEstimator = new DiscreteEstimator((int)cargoFreq.size(), false);
     FORE(i, 1, cargoFreq, cargoEstimator);
     
-    stopsEstimator = new DiscreteEstimator((int)stopsFreq.size(), false);//new PoissonEstimator();
+    stopsEstimator = new DiscreteEstimator((int)stopsFreq.size(), false);
     FORE(i, 1, stopsFreq, stopsEstimator);
     
-    startDayEstimator = new KernelEstimator(1);
+    startDayEstimator = new NormalEstimator(1);
     FORE(i, 1, start_dayFreq, startDayEstimator);
     
-    startMonthEstimator = new DiscreteEstimator((int)start_monthFreq.size(), false);//new PoissonEstimator();
+    startMonthEstimator = new DiscreteEstimator((int)start_monthFreq.size(), false);
     FORE(i, 1, start_monthFreq, startMonthEstimator);
     
     startDayOfMonthEstimator = new KernelEstimator(1);
     FORE(i, 1, start_day_of_monthFreq, startDayOfMonthEstimator);
     
-    startDayOfWeekEstimator = new PoissonEstimator();//new DiscreteEstimator((int)start_day_of_weekFreq.size(), false);
+    startDayOfWeekEstimator = new DiscreteEstimator(7, false);
     FORE(i, 1, start_day_of_weekFreq, startDayOfWeekEstimator);
     
     startTimeEstimator = new KernelEstimator(1);
@@ -1374,22 +1408,22 @@ void initFreqEstimators() {
     pilot2Estimator = new DiscreteEstimator((int)pilot2Freq.size(), false);
     FORE(i, 1, pilot2Freq, pilot2Estimator);
     
-    pilotExpEstimator = new KernelEstimator(1);//new DiscreteEstimator((int)pilot_expFreq.size(), false);//
+    pilotExpEstimator = new KernelEstimator(1);
     FORE(i, 0, pilot_expFreq, pilotExpEstimator);
     
-    pilotVisitsPrevEstimator = new DiscreteEstimator((int)pilot_visits_prevFreq.size(), false);//
+    pilotVisitsPrevEstimator = new DiscreteEstimator((int)pilot_visits_prevFreq.size(), false);
     FORE(i, 0, pilot_visits_prevFreq, pilotVisitsPrevEstimator);
     
-    pilotDistPrevEstimator = new PoissonEstimator();//new KernelEstimator(1);
+    pilotDistPrevEstimator = new DiscreteEstimator((int)pilot_dist_prevFreq.size(), false);
     FORE(i, 0, pilot_dist_prevFreq, pilotDistPrevEstimator);
     
-    risk1Estimator = new KernelEstimator(1);
+    risk1Estimator = new DiscreteEstimator((int)route_risk_1Freq.size(), false);
     FORE(i, 0, route_risk_1Freq, risk1Estimator);
     
-    risk2Estimator = new DiscreteEstimator((int)route_risk_2Freq.size(), false);// new KernelEstimator(1);
+    risk2Estimator = new DiscreteEstimator((int)route_risk_2Freq.size(), false);
     FORE(i, 0, route_risk_2Freq, risk2Estimator);
     
-    weatherEstimator = new DiscreteEstimator((int)weatherFreq.size(), false);
+    weatherEstimator = new KernelEstimator(1);
     FORE(i, 0, weatherFreq, weatherEstimator);
     
     traf0Estimator = new KernelEstimator(10);
@@ -1430,35 +1464,35 @@ double collectFeatures(VD &feats) {
 int featNum = 28;//24;
 
 void createEntryFeatures(const Entry &e, const bool train, VD &feats) {
-    feats.push_back(sourceEstimator->getProbability(e.source) * 100);
-    feats.push_back(distanceEstimator->getProbability(extractDistanceRange(e)) * 1000);
-    feats.push_back(cyclesEstimator->getProbability(e.cycles) * 10);
-    feats.push_back(complexityEstimator->getProbability(e.complexity) * 100);
-    feats.push_back(cargoEstimator->getProbability(e.cargo));
-    feats.push_back(stopsEstimator->getProbability(e.stops) * 10);
-    feats.push_back(startDayEstimator->getProbability(e.start_day));
-    feats.push_back(startMonthEstimator->getProbability(e.start_month));
-    feats.push_back(startDayOfMonthEstimator->getProbability(e.start_day_of_month) * 100);
-    feats.push_back(startDayOfWeekEstimator->getProbability(e.start_day_of_week) * 10);
-    feats.push_back(startTimeEstimator->getProbability(extractTimeRange(e)) * 100);
-    feats.push_back(daysEstimator->getProbability(e.days) * 100);
-    feats.push_back(pilotEstimator->getProbability(e.pilot) * 1000);
-    feats.push_back(pilot2Estimator->getProbability(e.pilot2) * 1000);
-    feats.push_back(pilotExpEstimator->getProbability(e.pilot_exp) * 10);
-    feats.push_back(pilotVisitsPrevEstimator->getProbability(e.pilot_visits_prev));
-    feats.push_back(pilotHoursPrevEstimator->getProbability(e.pilot_hours_prev) * 100);
-    feats.push_back(pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev) * 100);
-    feats.push_back(pilotDistPrevEstimator->getProbability(extractDistancePrevRange(e)));
-    feats.push_back(risk1Estimator->getProbability(extractRouteRisk1(e)));
-    feats.push_back(risk2Estimator->getProbability(extractRouteRisk2(e)) * 100);
-    feats.push_back(weatherEstimator->getProbability(e.weather) * 10);
-    feats.push_back(visibilityEstimator->getProbability(e.visibility) * 100);
+    feats.push_back(sourceEstimator->getProbability(e.source) * 100); // 0
+    feats.push_back(distanceEstimator->getProbability(extractDistanceRange(e)) * 1000); // 1
+    feats.push_back(cyclesEstimator->getProbability(e.cycles) * 10); // 2
+    feats.push_back(complexityEstimator->getProbability(e.complexity) * 100); // 3
+    feats.push_back(cargoEstimator->getProbability(e.cargo)); // 4
+    feats.push_back(stopsEstimator->getProbability(e.stops) * 10); // 5
+    feats.push_back(startDayEstimator->getProbability(e.start_day)); // 6
+    feats.push_back(startMonthEstimator->getProbability(e.start_month)); // 7
+    feats.push_back(startDayOfMonthEstimator->getProbability(e.start_day_of_month) * 100); // 8
+    feats.push_back(startDayOfWeekEstimator->getProbability(e.start_day_of_week) * 10); // 9
+    feats.push_back(startTimeEstimator->getProbability(extractTimeRange(e)) * 100); // 10
+    feats.push_back(daysEstimator->getProbability(e.days) * 100); // 11
+    feats.push_back(pilotEstimator->getProbability(e.pilot) * 1000); // 12
+    feats.push_back(pilot2Estimator->getProbability(e.pilot2) * 1000); // 13
+    feats.push_back(pilotExpEstimator->getProbability(e.pilot_exp) * 10); // 14
+    feats.push_back(pilotVisitsPrevEstimator->getProbability(e.pilot_visits_prev)); // 15
+    feats.push_back(pilotHoursPrevEstimator->getProbability(e.pilot_hours_prev) * 100); // 16
+    feats.push_back(pilotDutyHoursPrevEstimator->getProbability(e.pilot_duty_hrs_prev) * 100); // 17
+    feats.push_back(pilotDistPrevEstimator->getProbability(extractDistancePrevRange(e))); // 18
+    feats.push_back(risk1Estimator->getProbability(extractRouteRisk1(e))); // 19
+    feats.push_back(risk2Estimator->getProbability(extractRouteRisk2(e)) * 100); // 20
+    feats.push_back(weatherEstimator->getProbability(e.weather) * 10); // 21
+    feats.push_back(visibilityEstimator->getProbability(e.visibility) * 100); // 22
     
-    feats.push_back(traf0Estimator->getProbability(e.traf0) * 100);
-    feats.push_back(traf1Estimator->getProbability(e.traf1) * 100);
-    feats.push_back(traf2Estimator->getProbability(e.traf2) * 100);
-    feats.push_back(traf3Estimator->getProbability(e.traf3) * 100);
-    feats.push_back(traf4Estimator->getProbability(e.traf4) * 100);
+    feats.push_back(traf0Estimator->getProbability(e.traf0) * 100); // 23
+    feats.push_back(traf1Estimator->getProbability(e.traf1) * 100); // 24
+    feats.push_back(traf2Estimator->getProbability(e.traf2) * 100); // 25
+    feats.push_back(traf3Estimator->getProbability(e.traf3) * 100); // 26
+    feats.push_back(traf4Estimator->getProbability(e.traf4) * 100); // 27
     
     if (train) {
         double val = collectFeatures(feats);
@@ -1597,31 +1631,39 @@ static void parseInput(const VS &input, bool trainData, VE &output) {
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //
 
-inline void printCollectedFreq() {
-    fprintf(stderr, "%s", "Source ID "); printWithIndex(sourceFreq);
-    fprintf(stderr, "\n%s", "Distance "); printWithIndex(distFreq);
-    fprintf(stderr, "\n%s", "Cycles "); printWithIndex(cyclesFreq);
-    fprintf(stderr, "\n%s", "Complexity "); printWithIndex(complexityFreq);
-    fprintf(stderr, "\n%s", "Cargo "); printWithIndex(cargoFreq);
-    fprintf(stderr, "\n%s", "Stops "); printWithIndex(stopsFreq);
-    fprintf(stderr, "\n%s", "Start day "); printWithIndex(start_dayFreq);
-    fprintf(stderr, "\n%s", "Start month "); printWithIndex(start_monthFreq);
-    fprintf(stderr, "\n%s", "Start day of month "); printWithIndex(start_day_of_monthFreq);
-    fprintf(stderr, "\n%s", "Start day of week "); printWithIndex(start_day_of_weekFreq);
-    fprintf(stderr, "\n%s", "Start time "); printWithIndex(start_timeFreq);
-    fprintf(stderr, "\n%s", "Pilot "); printWithIndex(pilotFreq);
-    fprintf(stderr, "\n%s", "Pilot2 "); printWithIndex(pilot2Freq);
-    fprintf(stderr, "\n%s", "Pilot experience "); printWithIndex(pilot_expFreq);
-    fprintf(stderr, "\n%s", "Pilot visits prev "); printWithIndex(pilot_visits_prevFreq);
-    fprintf(stderr, "\n%s", "Pilot dist prev "); printWithIndex(pilot_dist_prevFreq);
-    fprintf(stderr, "\n%s", "Route risk1 "); printWithIndex(route_risk_1Freq);
-    fprintf(stderr, "\n%s", "Route risk2 "); printWithIndex(route_risk_2Freq);
-    fprintf(stderr, "\n%s", "Weather "); printWithIndex(weatherFreq);
-    
-    fprintf(stderr, "\n%s", "Events "); printWithIndex(eventsFreq);
+
+inline void printFreqEstimator(const FreqEstimator &est) {
+    for (int i = 0; i < est.size(); i++) {
+        Printf("%i:%f, ", i, est.getProbability(i));
+    }
+    cerr << endl;
 }
 
-inline void printEstimator(const Estimator &est, const VI &data) {
+inline void printCollectedFreq() {
+    fprintf(stderr, "%s", "Source ID "); printFreqEstimator(sourceFreq);
+    fprintf(stderr, "\n%s", "Distance "); printFreqEstimator(distFreq);
+    fprintf(stderr, "\n%s", "Cycles "); printFreqEstimator(cyclesFreq);
+    fprintf(stderr, "\n%s", "Complexity "); printFreqEstimator(complexityFreq);
+    fprintf(stderr, "\n%s", "Cargo "); printFreqEstimator(cargoFreq);
+    fprintf(stderr, "\n%s", "Stops "); printFreqEstimator(stopsFreq);
+    fprintf(stderr, "\n%s", "Start day "); printFreqEstimator(start_dayFreq);
+    fprintf(stderr, "\n%s", "Start month "); printFreqEstimator(start_monthFreq);
+    fprintf(stderr, "\n%s", "Start day of month "); printFreqEstimator(start_day_of_monthFreq);
+    fprintf(stderr, "\n%s", "Start day of week "); printFreqEstimator(start_day_of_weekFreq);
+    fprintf(stderr, "\n%s", "Start time "); printFreqEstimator(start_timeFreq);
+    fprintf(stderr, "\n%s", "Pilot "); printFreqEstimator(pilotFreq);
+    fprintf(stderr, "\n%s", "Pilot2 "); printFreqEstimator(pilot2Freq);
+    fprintf(stderr, "\n%s", "Pilot experience "); printFreqEstimator(pilot_expFreq);
+    fprintf(stderr, "\n%s", "Pilot visits prev "); printFreqEstimator(pilot_visits_prevFreq);
+    fprintf(stderr, "\n%s", "Pilot dist prev "); printFreqEstimator(pilot_dist_prevFreq);
+    fprintf(stderr, "\n%s", "Route risk1 "); printFreqEstimator(route_risk_1Freq);
+    fprintf(stderr, "\n%s", "Route risk2 "); printFreqEstimator(route_risk_2Freq);
+    fprintf(stderr, "\n%s", "Weather "); printFreqEstimator(weatherFreq);
+    
+    fprintf(stderr, "\n%s", "Events "); printFreqEstimator(eventsFreq);
+}
+
+inline void printEstimator(const Estimator &est, const FreqEstimator &data) {
     for (int i = 0; i < data.size(); i++) {
         Printf("%i:%f, ", i, est.getProbability(i));
     }
@@ -1874,6 +1916,8 @@ private:
             if (val > 10000) { // 10000 - is the optimum
                 Printf("val: %f ", val);
                 testEntries[i].predicted = 2;
+                printEntry(testEntries[i]);
+                print(testM[i]);
             } else {
                 testEntries[i].predicted = estimator->getProbability(val);
             }
