@@ -1615,6 +1615,8 @@ class DiscreteEstimator : public Estimator {
     /** Hold the sum of counts */
     double m_SumOfCounts;
     
+    NormalEstimator *extrapolator = new NormalEstimator(1);
+    
 public:
     DiscreteEstimator(int numSymbols, bool laplace) {
         if (laplace) {
@@ -1637,16 +1639,20 @@ public:
             m_Counts[(int)data] += weight;
             m_SumOfCounts += weight;
         }
+        extrapolator->addValue(data, weight);
     }
     double getProbability(double data) const {
         if (m_SumOfCounts == 0) {
             return 0;
         }
         int index = data;
+        double p;
         if (index >= m_Counts.size()) {
-            return 0;
+            p = extrapolator->getProbability(data);
+        } else {
+            p = (double)m_Counts[index] / m_SumOfCounts;
         }
-        double p = (double)m_Counts[index] / m_SumOfCounts;
+        
         return p;
     }
 };
@@ -1717,8 +1723,6 @@ private:
         thisPoint *= (*m_CovarianceInverse);
         thisPoint *= thisPoint.transpose();
         double val = exp(thisPoint(0, 0) / 2) / (sqrt(M_PI * 2) * m_Determinant);
-        
-//        exp(-thisPoint.times(m_CovarianceInverse).times(thisPoint.transpose()).get(0, 0)/ 2) / (sqrt(M_PI * 2) * m_Determinant);
         return val;
     }
 
@@ -1816,8 +1820,7 @@ private:
             double x = m_Values[i];
             double y = m_CondValues[i];
             double weight = m_Weights[i];
-            
-            Printf("x: %f, y: %f, weight: %f\n", x, y, weight);
+
             c00 += (x - m_ValueMean) * (x - m_ValueMean) * weight;
             c01 += (x - m_ValueMean) * (y - m_CondMean) * weight;
             c11 += (y - m_CondMean) * (y - m_CondMean) * weight;
@@ -2120,7 +2123,7 @@ void initFreqEstimators() {
     startDayOfMonthEstimator = new KernelEstimator(1);
     FORE(i, 1, start_day_of_monthFreq, startDayOfMonthEstimator);
     
-    startDayOfWeekEstimator = new DiscreteEstimator(7, false);
+    startDayOfWeekEstimator = new DiscreteEstimator((int)start_day_of_weekFreq.size(), false);
     FORE(i, 1, start_day_of_weekFreq, startDayOfWeekEstimator);
     
     startTimeEstimator = new KernelEstimator(1);
