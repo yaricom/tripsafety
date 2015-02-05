@@ -1,3 +1,19 @@
+Source ID: 29, 38, 54 > 50
+Cycles==1 > 700
+Complexity: 17, 18 > 40
+cargo== 5 > 500
+Stops - 1, 2 > 350
+Start month > 9 > 400
+Start day of month > 40
+Start day of week - 1-3 > 180
+Start time > 10
+Pilot experience > 70
+Pilot visits prev==0 (>700)
+Route risk1 > 200
+Route risk2 > 90
+Weather==1
+
+
 Часто из одной и той же локации. source
 
 Прямая линейная зависимость от расстояния dist
