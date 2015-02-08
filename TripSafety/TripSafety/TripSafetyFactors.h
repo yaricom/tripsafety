@@ -1270,8 +1270,8 @@ public:
         if (index > m_Counts.size()) {
             return 0;
         }
-//        double p = (double)m_Counts[index] / m_SumOfCounts;
-        double p = (double)m_Counts[index];
+        double p = (double)m_Counts[index] / m_SumOfCounts;
+//        double p = (double)m_Counts[index];
         return p;
     }
     
@@ -1925,35 +1925,30 @@ private:
         for (int i = 0; i < Y; i++) {
             double val = collectFeatures(testM[i]);
             
-            // bad and long trip
-            if (testEntries[i].dist > 1500 && testEntries[i].visibility < 8 && testEntries[i].pilot_exp < 10 ) {
+            /*// bad and long trip
+            if (distFreq.getProbability(extractDistanceRange(testEntries[i])) > 40 && testEntries[i].visibility < 8 && pilot_expFreq.getProbability(testEntries[i].pilot_exp) > 90 ) {
                 val *= 100;
             }
-            // pilot jerk
-            else if (pilotFreq.getProbability(testEntries[i].pilot) >= 10) {
-                val *= 100;
-            }
-            else if (pilotFreq.getProbability(testEntries[i].pilot) > 2) {
+            else if (pilotFreq.getProbability(testEntries[i].pilot) > 5) {
                 val *= 50;
             }
-            // pilot fatique and long trip
-            else if(testEntries[i].dist > 1600 && (testEntries[i].pilot_hours_prev + testEntries[i].pilot_duty_hrs_prev) > 28 && testEntries[i].pilot_dist_prev > 1500) {
-                val *= 50;
-            }
-            
-            // pilot experience
-            if (testEntries[i].dist > 1000 && pilot_expFreq.getProbability(testEntries[i].pilot_exp) > 70 && pilot_visits_prevFreq.getProbability(testEntries[i].pilot_visits_prev) > 700) {
-                val *= 50;
-            }
-            
             // cargo and source
-            if (sourceFreq.getProbability(testEntries[i].source) > 50 && testEntries[i].cargo == 5) {
+            if (sourceFreq.getProbability(testEntries[i].source) > 60 && cargoFreq.getProbability(testEntries[i].cargo) > 500) {
                 val *= 20;
+            }*/
+            
+            // bad and long trip
+            if (distFreq.getProbability(extractDistanceRange(testEntries[i])) > 0.04 && testEntries[i].visibility < 8 && pilot_expFreq.getProbability(testEntries[i].pilot_exp) > 0.1 ) {
+                val *= 100;
             }
-            // road conditions
-            else if (testEntries[i].weather == 1 && testEntries[i].visibility < 10 && route_risk_1Freq.getProbability(extractRouteRisk1(testEntries[i])) > 200 && testEntries[i].route_risk_2 > 500 && start_timeFreq.getProbability(extractTimeRange(testEntries[i])) > 10) {
+            else
+                if (pilotFreq.getProbability(testEntries[i].pilot) > 0.0055) {
                 val *= 50;
             }
+            // cargo and source
+//            if (sourceFreq.getProbability(testEntries[i].source) > 0.053 && cargoFreq.getProbability(testEntries[i].cargo) > 0.5) {
+//                val *= 20;
+//            }
 
             
             testEntries[i].predicted = val;
