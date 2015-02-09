@@ -1270,7 +1270,7 @@ public:
         if (index > m_Counts.size()) {
             return 0;
         }
-        double p = (double)m_Counts[index] / m_SumOfCounts;
+        double p = 1000.0 * (double)m_Counts[index] / m_SumOfCounts;
 //        double p = (double)m_Counts[index];
         return p;
     }
@@ -1938,11 +1938,11 @@ private:
             }*/
             
             // bad and long trip
-            if (distFreq.getProbability(extractDistanceRange(testEntries[i])) > 0.04 && testEntries[i].visibility < 8 && pilot_expFreq.getProbability(testEntries[i].pilot_exp) > 0.1 ) {
+            if (distFreq.getProbability(extractDistanceRange(testEntries[i])) > 40 && testEntries[i].visibility < 8 && pilot_expFreq.getProbability(testEntries[i].pilot_exp) > 90 ) {
                 val *= 100;
             }
             else
-                if (pilotFreq.getProbability(testEntries[i].pilot) > 0.0055) {
+                if (pilotFreq.getProbability(testEntries[i].pilot) > 500) {
                 val *= 50;
             }
             // cargo and source
