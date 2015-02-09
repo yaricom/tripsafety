@@ -1253,6 +1253,8 @@ class FreqEstimator : public Estimator {
     /** Hold the sum of counts */
     double m_SumOfCounts;
     
+    NormalEstimator *extrapolator = new NormalEstimator(1);
+    
 public:
     void addValue(double data, double weight) {
         int index = (int)data;
@@ -1261,7 +1263,10 @@ public:
         }
         m_Counts[index] += weight;
         m_SumOfCounts += weight;
+
+        extrapolator->addValue(data, weight);
     }
+    
     double getProbability(double data) const {
         if (m_SumOfCounts == 0) {
             return 0;
@@ -1270,9 +1275,15 @@ public:
         if (index > m_Counts.size()) {
             return 0;
         }
-        double p = 1000.0 * (double)m_Counts[index] / m_SumOfCounts;
+//        double p = 1000.0 * (double)m_Counts[index] / m_SumOfCounts;
 //        double p = (double)m_Counts[index];
-        return p;
+        double p;
+        if (index >= m_Counts.size()) {
+            p = extrapolator->getProbability(data);
+        } else {
+            p = (double)m_Counts[index] / m_SumOfCounts;
+        }
+        return p * 1000.0;
     }
     
     size_t size() const{
