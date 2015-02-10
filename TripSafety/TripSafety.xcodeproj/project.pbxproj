@@ -24,6 +24,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7861514A1A8A548C00F2891C /* ridge_regression.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ridge_regression.h; sourceTree = "<group>"; };
 		788E3D9E1A7B8E1B009CA485 /* features_normalization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = features_normalization.h; sourceTree = "<group>"; };
 		788E3D9F1A7B8E1B009CA485 /* gradient_boosting_tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gradient_boosting_tree.h; sourceTree = "<group>"; };
 		788E3DA01A7B8E1B009CA485 /* io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = io.h; sourceTree = "<group>"; };
@@ -77,6 +78,7 @@
 				788E3DA41A7B8E59009CA485 /* TripSafetyFactors.h */,
 				78E7BEBC1A7D21E300208978 /* statistics.h */,
 				78E7BEBB1A7D1ED200208978 /* estimators.h */,
+				7861514A1A8A548C00F2891C /* ridge_regression.h */,
 			);
 			path = TripSafety;
 			sourceTree = "<group>";
