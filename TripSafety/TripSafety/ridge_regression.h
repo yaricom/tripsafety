@@ -79,6 +79,12 @@ class RidgeRegression {
     VD regrCoefSeed;
     // residual errors per observation
     VD obsErrors;
+    
+    // the OOB errors calculated if bootstrap used
+    VD oobErrors;
+    
+    // the flag to indicate whether to use bootstrap
+    bool useBootstrap;
 
 long init=-1;
 long obs=-1;
@@ -120,29 +126,17 @@ int main() {
      * @param check the vector of dependent variables per sample
      */
     void train(const VVD &train, const VD &check) {
-        initDataStructures(train, check);
-        initFeaturesSeed(train, check, 2, 5, 4);
-    }
-    
-    void initDataStructures(const VVD &train, const VD &check) {
         Assert(train.size() == check.size(), "Samples size should be equal to observations size");
         // find number of variables and observations
         var = train[0].size();
         obs = train.size();
         
-        // clear data if needed
-        if (init == 1) {
-            regrCoef.clear();
-            obsErrors.clear();
-        } else  {
-            init = 1;
+        initDataStructures();
+        if (useBootstrap) {
+            bootstrap(train, check, 20, 0, 100);
+        } else {
+            initFeaturesSeed(train, check, 2, 5, 4);
         }
-        
-        // resize internal data structures
-        regrCoef.resize(var, 0);
-        
-        
-        obsErrors.resize(obs, 0);
     }
     
     /**
@@ -164,6 +158,8 @@ int main() {
      * starting point in Regression
      */
     void initFeaturesSeed(const VVD &train, const VD &check, const long mode, const long nvalid, const long niter) {
+        //Init_param
+        
         // initialize data structure
         if (seed==1) {
             regrCoefSeed.clear();
@@ -184,6 +180,83 @@ int main() {
         }
     }
     
+    /**
+     * Compute empirical distribution for estimated regression coefficients
+     * and reduction in standard deviation of error. Could also be used to
+     * compute empirical distribution of error for each observation, to
+     * detect outliers. The results (regression coefficients and reduction
+     * in standard deviation of error for each of the nsample regressions)
+     * are stored in rg_log.txt.
+     *
+     * Input (global): var, obs, ini (must be set to 1 by using Regress_init
+     * first)
+     * Input: niter: number of iterations to use to compute regression
+     * coefficients; see Regression.
+     * Input: nsample: number of samples; Boostrap performs one regression
+     * on each sample
+     * Input: mode: see Regression for details.
+     * Output (global): all output in rg_log.txt
+     */
+    void bootstrap(const VVD &train, const VD &check, const long nsample, const long mode, const long niter) {
+        VVD bootTrain;
+        VD bootCheck;
+        
+        VVD bootTest;
+        VD bootCheckTest;
+        
+        // the best found regression coefficients
+        VD bestCoef(var, 0);
+        
+        
+        // array to store selected indices
+        long *pick;
+        int k, idx, m, oi;
+        double oobMSE, oobME, minOOBMSE = 1e+9;
+        for (int n = 0; n < nsample; n++) {
+            // pick up random observations
+            for (k = 0; k < obs; k++) { pick[k]=0; }
+            for (k = 0; k < obs; k++) {
+                idx = rand() % obs;
+                pick[idx]++;
+            }
+            
+            // create subsample
+            for (m = 0; m < obs; m++) {
+                if (pick[m] > 0) {
+                    // save pick[m] copies of row in data
+                    for (k = 0; k < pick[m]; k++) {
+                        bootTrain.push_back(train[k]);
+                        bootCheck.push_back(check[k]);
+                    }
+                } else {
+                    // save current row as test sample
+                    bootTest.push_back(train[k]);
+                    bootCheckTest.push_back(check[k]);
+                }
+            }
+            // do regression
+            initDataStructures();
+            regress(bootTrain, bootCheck, mode, niter, 0);
+            
+            // find OOB error
+            oobMSE = 0;
+            for (oi = 0; oi < bootTest.size(); oi++) {
+                oobME = predict(bootTest[oi]) - bootCheckTest[oi];
+                oobMSE += oobME * oobME;
+            }
+            oobMSE /= (double)bootTest.size();
+            oobErrors.push_back(oobMSE);
+            if (oobMSE < minOOBMSE) {
+                oobMSE = minOOBMSE;
+                // store current regression coefficients
+                bestCoef.swap(regrCoef);
+            }
+        }
+        
+        // store best regression coefficients as train results
+        regrCoef.swap(bestCoef);
+    }
+    
     
     double regress(const VVD &train, const VD &check, const long mode, const long niter, long seed_flag) {
         
@@ -191,270 +264,29 @@ int main() {
         return 0;
     }
     
-    /*
-     Perform nvalid regressions with different starting points
-     to see if all regressions produce the same results. If not,
-     either you use too few iterations (increase niter up to 200)
-     or your dataset has collinearity. In case of collinearity,
-     this procedure will identify up to nvalid different optimum
-     solutions to the problem.
-     
-     Input (global): regrCoef, obs, var
-     Input: mode: should be 2 (recommended) or 3; see Regression for
-     description
-     Input: nvalid: number of validations
-     Input: niter: number of iterations to be used in regression
-     Output: nvalid sets of regression coefficients in rg_log.txt
+    double predict(const VD &test) {
+        
+        return 0;
+    }
+    
+    /**
+     * Reinitialize internal data structures.
      */
-    void validateInputData(const VVD &train, const VD &check, const long mode, const long nvalid, const long niter) {
-        
-    }
-
-    /*
-     Perform nvalid regressions with different starting points
-     to see if all regressions produce the same results. If not,
-     either you use too few iterations (increase niter up to 200)
-     or your dataset has collinearity. In case of collinearity,
-     this procedure will identify up to nvalid different optimum
-     solutions to the problem.
-     
-     Input (global): *param, obs, var
-     Input: mode: should be 2 (recommended) or 3; see Regression for
-     description
-     Input: nvalid: number of validations
-     Input: niter: number of iterations to be used in regression
-     Output: nvalid sets of regression coefficients in rg_log.txt
-     */
-int Validation(const long mode, const long nvalid, const long niter) {
-    long n;
-    double nsvar;
-    char label[128],digits[8];
-    
-    label[127]='\0';
-    digits[7]='\0';
-    
-    Regress_init(); /* noprint eliminate output to rg_log.txt */
-    for (n=0; n< nvalid; n++) {
-        printf("\nVALIDATION Test %ld\n\n",n);
-        itoa(n,digits,10);
-        strcpy(label,"VALIDATION_");
-        strcat(label,digits);
-        nsvar=Regress(mode,niter,label,0);
-    }
-}
-
-/*---------------------------------------------------------------------*/
-
-int Init_param(long mode,long nvalid,long niter) {
-    
-    /*  Performs nvalid approximate regression with different starting
-     points to identify an initial approximate solution. This
-     solution will be used as starting point (seed) for the
-     regression.
-     
-     Input: mode: should be 2 (recommended) or 3; see Regression for
-     details
-     Input: nvalid: number of regressions to perform
-     Input: niter: number of iterations to use in
-     each regression; should be small here (<10)
-     Input: mode: should be 2 (recommended) or 3; see Regression for
-     description
-     Output (global): seed is set to 1 to indicate
-     that Regression must use param_seed
-     Output: param_seed: regression coefficients to be used as
-     starting point in Regression    */
-    
-    long k,n;
-    double nsvar,nsvar_max;
-    char label[128],digits[8];
-    
-    label[127]='\0';
-    digits[7]='\0';
-    
-    nsvar_max=-1;
-    if (seed==1) { free(param_seed); } else { seed=1; }
-    param_seed=(double *)calloc(var,2*sizeof(double));
-    Regress_init();
-    for (n=0; n< nvalid; n++) {
-        printf("\nINITPARAM Test %ld\n\n",n);
-        itoa(n,digits,10);
-        strcpy(label,"INITPARAM_");
-        strcat(label,digits);
-        nsvar=Regress(mode,niter,label,0);
-        if (nsvar>nsvar_max) {
-            nsvar_max=nsvar;
-            for (k=1; k<var; k++) {
-                param_seed[k]=param[k];
-            }
-        }
-    }
-}
-
-/*---------------------------------------------------------------------*/
-
-int Regress_init() {
-    
-    /*  Read dataset rg.txt and create one column for each variable (e.g.
-     rg_3.txt for 3rd variable. Variable 0 is the dependent variable.
-     Compute obs and var. Allocate memory to param.
-     
-     Input: rg.txt: data with no empty columns, no empty rows, only
-     numbers in each cell; first column must be dependent variables;
-     columns must be tab separated.
-     Output (global): obs, var, data files (one column per variable)
-     Output: init (set to 1)
-     Output: param */
-    
-    long i,k;
-    char c[2],stri[80];
-    char filename[1024];
-    double val;
-    
-    FILE *RG;
-    FILE *COL[100];
-    
-    obs=0;
-    var=1;
-    
-    stri[79]='\0';
-    filename[1023]='\0';
-    
-    /* compute number of variables */
-    
-    RG=fopen("c:\\ftp\\IFDindex\\programs\\rg.txt","rt");
-    if (RG==NULL) {
-        printf("dataset rg.txt not found\n");
-        exit(3);
-    }
-    
-    while (c[0] != '\n') {
-        fgets(c,2,RG);
-        if (c[0]=='\t') { var++; }
-    }
-    fclose(RG);
-    
-    /* create one file for each variable  */
-    
-    for (k=0; k<var; k++) {
-        Create_rgfilename(k,filename);
-        COL[k]=fopen(filename,"wt");
-    }
-    
-    RG=fopen("c:\\ftp\\IFDindex\\programs\\rg.txt","rt");
-    k=0;
-    while (!feof(RG)) {
-        if (k==0) { obs++; }
-        fscanf(RG,"%s\n",stri);
-        val=atof(stri);
-        fprintf(COL[k],"%lf\n",val);
-        k++;
-        if (k==var) { k=0; }
-    }
-    fclose(RG);
-    
-    for (k=0; k<var; k++) { fclose(COL[k]); }
-    printf("INIT %ld observations / %ld variables detected\n\n",obs,var);
-    if (init==1) { free(param); } else  { init=1; }
-    param=(double *)calloc(var,2*sizeof(double *));
-}
-
-/*---------------------------------------------------------------------*/
-/*  
- Compute empirical distribution for estimated regression coefficients
- and reduction in standard deviation of error. Could also be used to
- compute empirical distribution of error for each observation, to
- detect outliers. The results (regression coefficients and reduction
- in standard deviation of error for each of the nsample regressions)
- are stored in rg_log.txt.
- 
- Input (global): var, obs, ini (must be set to 1 by using Regress_init
- first)
- Input: niter: number of iterations to use to compute regression
- coefficients; see Regression.
- Input: nsample: number of samples; Boostrap performs one regression
- on each sample
- Input: mode: see Regression for details.
- Output (global): all output in rg_log.txt  
- */
-
-int Bootstrap(long nsample, long mode, long niter){
-
-    long k,l,n,m,nobs,idx;
-    long *pick;
-    double val,*row;
-    char label[128],digits[8];
-    char stri[80];
-    
-    FILE *DATA,*SAMPLE;
-    
-    stri[79]='\0';
-    label[127]='\0';
-    digits[7]='\0';
-    
-    if (init !=1) {
-        printf("Boostrap: must run init first\n");
-        exit(2);
-    }
-    
-    pick=(long *)calloc(obs,2*sizeof(long));
-    row=(double *)calloc(var,2*sizeof(long));
-    
-    system("copy c:\\ftp\\IFDindex\\programs\\rg.txt c:\\ftp\\IFDindex\\programs\\rg_sec.txt");
-    
-    for (n=0; n<nsample; n++) {
-        
-        /* pick up observations */
-        
-        printf("\nBOOTSTRAP subsample %ld\n",n);
-        for (k=0; k<obs; k++) { pick[k]=0; }
-        for (k=0; k<obs; k++) {
-            idx=rand()%obs;
-            pick[idx]++;
+    void initDataStructures() {
+        // clear data if needed
+        if (init == 1) {
+            regrCoef.clear();
+            obsErrors.clear();
+        } else  {
+            init = 1;
         }
         
-        /* create subsample */
-        
-        DATA=fopen("c:\\ftp\\IFDindex\\programs\\rg_sec.txt","rt");
-        SAMPLE=fopen("c:\\ftp\\IFDindex\\programs\\rg.txt","wt");
-        m=0; nobs=0; k=0;
-        while (!feof(DATA)) {
-            /* read row m of data  */
-            for (k=0; k<var; k++) {
-                fscanf(DATA,"%s\n",stri);
-                val=atof(stri);
-                row[k]=val;
-            }
-            /* save pick[m] copies of row in SAMPLE */
-            for (k=0; k<pick[m]; k++) {
-                for(l=0; l<var-1; l++) {
-                    fprintf(SAMPLE,"%lf\t",row[l]);
-                }
-                if (nobs == obs-1) {
-                    fprintf(SAMPLE,"%lf",row[var-1]);
-                    /* no newline after last row */
-                } else {
-                    fprintf(SAMPLE,"%lf\n",row[var-1]);
-                    /* newline if not last row */
-                }
-                nobs++;
-            }
-            m++;
-        }
-        
-        fclose(SAMPLE);
-        fclose(DATA);
-        itoa(n,digits,10);
-        strcpy(label,"BOOTSR_");
-        strcat(label,digits);
-        Regress_init();
-        Regress(mode,niter,label,0);
-        
+        // resize internal data structures
+        regrCoef.resize(var, 0);
+        obsErrors.resize(obs, 0);
     }
-    system("copy c:\\ftp\\IFDindex\\programs\\rg_sec.txt c:\\ftp\\IFDindex\\programs\\rg.txt");
-    Regress_init();
-    free(pick);
-    free(row);
-}
+    
+
 
 /*---------------------------------------------------------------------*/
 
