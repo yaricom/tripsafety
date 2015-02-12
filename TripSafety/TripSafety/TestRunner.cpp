@@ -11,7 +11,6 @@
 
 #include "stdc++.h"
 #include "TripSafetyFactors.h"
-#include "ridge_regression.h"
 
 namespace am {
     namespace launcher {
