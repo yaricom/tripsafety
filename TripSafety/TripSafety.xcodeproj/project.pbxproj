@@ -24,6 +24,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		784D765D1A93A2AE00DE8712 /* TripSafetyFactorsPsycho.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TripSafetyFactorsPsycho.h; path = TripSafety/TripSafetyFactorsPsycho.h; sourceTree = "<group>"; };
 		7861514A1A8A548C00F2891C /* ridge_regression.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ridge_regression.h; sourceTree = "<group>"; };
 		788E3D9E1A7B8E1B009CA485 /* features_normalization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = features_normalization.h; sourceTree = "<group>"; };
 		788E3D9F1A7B8E1B009CA485 /* gradient_boosting_tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gradient_boosting_tree.h; sourceTree = "<group>"; };
@@ -52,6 +53,7 @@
 		78A8CD881A7A5B7F000FACD3 = {
 			isa = PBXGroup;
 			children = (
+				784D765D1A93A2AE00DE8712 /* TripSafetyFactorsPsycho.h */,
 				78A8CD931A7A5B7F000FACD3 /* TripSafety */,
 				78A8CD921A7A5B7F000FACD3 /* Products */,
 			);
