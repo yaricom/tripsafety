@@ -1198,6 +1198,33 @@ public:
     
 };
 
+void storeMatrixAsLibSVM(const char* fileName, const VVD &mat, const VD &Y) {
+    FILE *fp;
+    if (!(fp = fopen(fileName, "w"))) {
+        throw runtime_error("Failed to open file!");
+    }
+    
+    // write to the buffer
+    for (int row = 0; row < mat.size(); row++) {
+        // write class value first
+        double val = Y[row];
+        fprintf(fp, "%f", val);
+        int index = 1;
+        for (int col = 0; col < mat[row].size(); col++) {
+            val = mat[row][col];
+            if (val) {
+                // write only non zero
+                fprintf(fp, " %d:%f", index, val);
+            }
+            index++;
+        }
+        fprintf(fp, "\n");
+    }
+    
+    // close file
+    fclose(fp);
+}
+
 class TripSafetyFactors {
     
 public:
@@ -1285,6 +1312,10 @@ public:
         
         trainData = genLev2Features(trainData);
         testData  = genLev2Features(testData);
+        
+        storeMatrixAsLibSVM("/Users/yaric/train.libsvm", trainData, trainResults);
+        
+        
         VI columns;
         REP(i, 38) if (i != 1 && i != 4 && i != 7 && i != 8 && i != 15 && i != 18 && i != 19 && i != 21) columns.PB(i);
         columns.PB(559);
@@ -1294,8 +1325,16 @@ public:
         columns.PB(1231);
         columns.PB(1286);
         
+        print(trainData[0]);
+        
+        cerr << endl << trainData[0].size() << endl;
+        
         trainData = selectColumns(trainData, columns);
         testData = selectColumns(testData, columns);
+        
+        print(trainData[0]);
+        
+        cerr << endl << trainData[0].size() << endl;
         
 //        REP(i, trainingData.S) {
 //            Sample s(trainingData[i]);
