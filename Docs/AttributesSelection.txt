@@ -1,0 +1,12 @@
+Attributes Selection
+Weka:
+Evaluator:    weka.attributeSelection.CfsSubsetEval 
+Search:weka.attributeSelection.BestFirst -D 1 -N 5
+
+=========
+
+Evaluator:    weka.attributeSelection.CfsSubsetEval 
+Search:weka.attributeSelection.GreedyStepwise -T -1.7976931348623157E308 -N -1
+
+=========
+
