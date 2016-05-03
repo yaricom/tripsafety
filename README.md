@@ -1,4 +1,3 @@
-# tripsafety
 ## Overview
 GDL is responsible for scheduling on-going deliveries to customers. Continuously improving safety is always an 
 important objective for GDL. Because safety has been the top priority at GDL, accidents during delivery are extremely 
